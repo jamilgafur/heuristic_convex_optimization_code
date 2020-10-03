@@ -1,0 +1,274 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Oct  3 09:07:53 2020
+
+@author: Cory Kromer-Edwards
+"""
+from argparse import ArgumentParser
+
+import random
+import numpy.matlib 
+import numpy as np 
+
+from deap import base
+from deap import creator
+from deap import tools
+
+from convex_quadratic_opt import generate_input as cqo_gen_input
+
+#=====================================================================================
+#tools: A set of functions to be called during genetic algorithm operations (mutate, mate, select, etc)
+#Documentation: https://deap.readthedocs.io/en/master/api/tools.html
+#=====================================================================================
+
+#=====================================================================================
+#Creator: Creates a class based off of a given class (known as containers)
+#   creator.create(class name, base class to inherit from, args**)
+#     class name: what the name of the class should be
+#     base class: What the created class should inherit from
+#     args**: key-value argument pairs that the class should have as fields
+#
+#   EX: creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+#     Creates a class named "FitnessMax" that inherits from base fitness class
+#     that library has (maximizes fitness value). It then has a tuple of weights
+#     that are given as a field for the class to use later.
+#=====================================================================================
+
+#The base.Fitness function will try to maximize fitness*weight, so we want
+#negative weight here so the closer we get to 0 (with domain (-inf, 0]) the 
+#larger the fitness will become.
+creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
+creator.create("Individual", list, fitness=creator.FitnessMin)
+
+
+#=====================================================================================
+#Toolbox: Used to add aliases and fixed arguements for functions that we will use later.
+#   toolbox.[un]register(alias name, function, args*)
+#     alias name: name to give the function being added
+#     function: the function that is being aliased in the toolbox
+#     args*: arguments to fix for the function when calling it later
+#
+#   EX: toolbox.register("attr_bool", random.randint, 0, 1)
+#     Creates an alias for the random.randint function with the name "attr_bool"
+#       with the default min and max int values being passed in being 0 and 1.
+#
+#   EX: toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_bool, 100)
+#     Creates an alias for the tools.initRepeat function with the name "individual".
+#     This function takes in the class that we want to repeadidly intialize from, the function to 
+#     initialize values with, and how many values to create from that function. This will create
+#     an individual with 100 random boolean values.
+#=====================================================================================
+
+toolbox = base.Toolbox()
+
+def init_ga_functions(size, alpha, indpb, tournsize):
+  """
+  Create the function aliases needed to generate the population.
+
+  Parameters
+  ----------
+  size : Integer
+    The size of the x vector.
+  alpha : Float
+    The blend percentage between both individuals.
+  indpb : Float
+    Probability to mutate a "gene" (element in x vector).
+  tournsize : Integer
+    Number of individuals to test against in a single tournament during selection.
+
+  Returns
+  -------
+  None.
+
+  """
+  
+  toolbox.register("attr_x", np.random.normal, 0, 1)
+  toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_x, size)
+  toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+  
+  toolbox.register("mate", tools.cxBlend, alpha=alpha)
+  toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=1, indpb=indpb)
+  toolbox.register("select", tools.selTournament, tournsize=tournsize)
+  
+#Fitness evaluation methods
+#=====================================================================================
+def evalutate_quad_opt(individual, A=None, b=None):
+  x = np.array([individual]).T  #x as Column vector
+  return 0.5 * np.matmul(np.matmul(x.T, A), x) - np.matmul(b.T, x)
+#=====================================================================================
+
+
+#Initialization methods
+#=====================================================================================
+def init_quad_opt(k, size, debug=0):
+  A, b = cqo_gen_input(k, size, debug)
+  toolbox.register("cqo_evaluate", evalutate_quad_opt, A=A, b=b)
+#=====================================================================================
+
+def run_ga(eval_function, num_gen, cxpb, mutpb, debug=0):
+  """
+  Run a genetic algorithm with the given evaluation function and input parameters.
+  Main portion of code for this method found from Deap example at URL:
+  https://deap.readthedocs.io/en/master/overview.html
+  
+  (TODO)
+  Will build statics and plot outputs before returning
+
+  Parameters
+  ----------
+  size : Integer
+    The size of the x vector.
+  eval_function : function
+    The evaluation to use for a particular problem.
+  num_gen : Integer
+    Number of generations to run over.
+  cxpb : Float
+    Percentage chance that 2 individuals will be mated.
+  mutpb : Float
+    Percentage chance that an individual will be mutated.
+  alpha : Float
+    The blend percentage between both individuals.
+  indpb : Float
+    Probability to mutate a "gene" (element in x vector).
+  tournsize : Integer
+    Number of individuals to test against in a single tournament during selection.
+  debug : Integer, optional
+    Debug level.
+
+  Returns
+  -------
+  None.
+
+  """
+  pop = toolbox.population(n=50)
+  hof = tools.HallOfFame(25)
+  
+  # Evaluate the entire population
+  fitnesses = list(map(eval_function, pop))
+  for ind, fit in zip(pop, fitnesses):
+    ind.fitness.values = fit
+
+  for g in range(num_gen):
+    # Select the next generation individuals
+    offspring = toolbox.select(pop, len(pop))
+    # Clone the selected individuals
+    offspring = list(map(toolbox.clone, offspring))
+    
+    # Apply crossover and mutation on the offspring
+    for child1, child2 in zip(offspring[::2], offspring[1::2]):
+      if random.random() < cxpb:
+        toolbox.mate(child1, child2)
+        del child1.fitness.values
+        del child2.fitness.values
+
+    for mutant in offspring:
+      if random.random() < mutpb:
+        toolbox.mutate(mutant)
+        del mutant.fitness.values
+
+    # Evaluate the individuals with an invalid fitness
+    invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
+    fitnesses = map(eval_function, invalid_ind)
+    
+    if debug >= 2:
+      print("Generation %i has min fitness value: %.3f" % (g, min(fit)))
+    elif debug == 1 and g % 10 == 0:
+      print("Generation %i has min fitness value: %.3f" % (g, min(fit)))
+    
+    for ind, fit in zip(invalid_ind, fitnesses):
+      ind.fitness.values = fit
+    
+    # The population is entirely replaced by the offspring
+    pop[:] = offspring
+    hof.update(pop)
+    
+  print("Convex quadratic optimization problem results:")
+  print("\tBest individual seen in all generations: \n\t\t%r" % (hof[0]))
+  print("\tBest individual seen fitness value: \n\t\t%.3f" % (hof[0].fitness.values[0]))
+
+  
+def build_parser():
+  """
+  Builds the parser based on input variables from the command line.
+  """
+  parser = ArgumentParser()
+  
+  #Arguments for the Genetic Algorithm
+  #=====================================================================================
+  parser.add_argument('-p', '--population-size', dest='pop_size', type=int, default=300,
+                      help='Number of individuals in the population', 
+                      metavar='P')
+  
+  parser.add_argument('-a', '--alpha', dest='alpha', type=float, default=0.5,
+                      help='Alpha used for blending individuals when mating', 
+                      metavar='A')
+  
+  parser.add_argument('-t', '--tournament-size', dest='tournsize', type=int, default=3,
+                      help='The number of individuals per tournament during selection', 
+                      metavar='T')
+  
+  parser.add_argument('-i', '--indpb', dest='indpb', type=float, default=0.2,
+                      help='Probability that a gene will be mutated in a mutating individual', 
+                      metavar='I')
+  
+  parser.add_argument('-g', '--num-gen', dest='number_generations', type=int, default=1000,
+                      help='Number of generations to run through in algorithm', 
+                      metavar='G')
+  
+  parser.add_argument('-c', '--cxpb', dest='cxpb', type=float, default=0.5,
+                      help='Percentage chance that 2 individuals will be mated', 
+                      metavar='C')
+  
+  parser.add_argument('-m', '--mutpb', dest='mutpb', type=float, default=0.3,
+                      help='Percentage chance that an individual will be mutated', 
+                      metavar='M')
+  #=====================================================================================
+  
+  #General arguments for problems
+  #=====================================================================================
+  parser.add_argument('-n', '--size', dest='size', type=int, default=5,
+                      help='The size of the square matrices', 
+                      metavar='N')
+  #=====================================================================================
+  
+  #Arguments for Quadratic Optimization problem
+  #=====================================================================================
+  parser.add_argument('-k', '--condition-number', dest='k', type=float, default=0.5,
+                      help='The condition number that we want to approximate for A matrix', 
+                      metavar='K')
+  #=====================================================================================
+  
+  #Mic arguments
+  #=====================================================================================
+  parser.add_argument('-s', '--seed', dest='seed', type=int, default=1234,
+                      help='The random seed for the algorithm', 
+                      metavar='S')
+  
+  parser.add_argument('-v', '--verbose', dest='debug', type=int, default=0,
+                      help='The log level for the algorithm. Values are [0, 1, 2]', 
+                      metavar='S')
+  
+  parser.add_argument('-r', '--problem-runs', dest='problems', type=int, default=2,
+                      help='Which problems should be run. 0=just quad, 1=just non-convex, 2=both', 
+                      metavar='R')
+  #=====================================================================================
+  
+  return parser
+  
+def main():
+  parser = build_parser()
+  options = parser.parse_args()
+  random.seed(options.seed)
+  np.random.seed(options.seed)
+  init_ga_functions(options.size, options.alpha, options.indpb, options.tournsize)
+  
+  if options.problems == 2:
+    init_quad_opt(options.k, options.size, options.debug)
+    run_ga(toolbox.cqo_evaluate, options.number_generations, options.cxpb, options.mutpb, options.debug)
+  elif options.problems == 0:
+    init_quad_opt(options.k, options.size, options.debug)
+    run_ga(toolbox.cqo_evaluate, options.number_generations, options.cxpb, options.mutpb, options.debug)
+
+if __name__ == '__main__':
+  main()
+

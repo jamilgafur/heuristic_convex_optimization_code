@@ -11,7 +11,17 @@ Convex quadratic optimization (or linear regression).
 import numpy.matlib 
 import numpy as np 
 import math
-import random
+#import random
+
+#random.seed(1234)
+#np.random.seed(1234)
+
+#Setting random.seed or np.random.seed sets the seed globally
+#which would affect all files that import these while running.
+#To avoid this, we create random states for each file that are then
+#used for randomness maintaining between generating data for problems
+#and running the alogorithms themselves.
+rng = np.random.RandomState(1234)
 
 def generate_D(k, size):
   """
@@ -37,7 +47,7 @@ def generate_D(k, size):
   #Since D is initially an identity matrix, we can multiply each row by
   #the d_{i,i} equation and it will only affect d_{i,i}
   def calc_diagonal_entries(x):
-    ui = random.uniform(0.0, 1.0)
+    ui = rng.uniform(0.0, 1.0)
     
     #exp((ln k) * ui)
     return x * math.exp(math.log(k) * ui)
@@ -63,7 +73,7 @@ def generate_Q(size):
 
   """
   
-  Z = np.random.normal(0, 1, (size, size))      #Random size x size matrix
+  Z = rng.normal(0, 1, (size, size))      #Random size x size matrix
   Q, R = np.linalg.qr(Z)
   return Q
 
@@ -132,7 +142,7 @@ def generate_input(k, size, debug=0):
   """
 
   A = generate_A(k, size, debug)
-  b = np.random.normal(0, 1, (size, 1)) #Generate normally distributed vector (mean=0, std. dev.=1)
+  b = rng.normal(0, 1, (size, 1)) #Generate normally distributed vector (mean=0, std. dev.=1)
   return (A, b)
   
 if __name__ == '__main__':
