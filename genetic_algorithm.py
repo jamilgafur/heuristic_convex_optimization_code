@@ -105,6 +105,75 @@ def init_quad_opt(k, size, debug=0):
   toolbox.register("cqo_evaluate", evalutate_quad_opt, A=A, b=b)
 #=====================================================================================
 
+def grid_search(k, size, alpha_values, indpb_values, tournsize_values, cxpb_values, mutpb_values):
+  """
+  Performs grid search over all hyperparameters for a particular problem. The
+  best values for each hyperparam will be printet when finished to be set as default.
+
+  Parameters
+  ----------
+  size : TYPE
+    DESCRIPTION.
+  alpha_values : TYPE
+    DESCRIPTION.
+  indpb_values : TYPE
+    DESCRIPTION.
+  tournsize_values : TYPE
+    DESCRIPTION.
+  cxpb_values : TYPE
+    DESCRIPTION.
+  mutpb_values : TYPE
+    DESCRIPTION.
+
+  Returns
+  -------
+  None.
+
+  """
+  
+  total_runs = len(alpha_values) * len(indpb_values) * len(tournsize_values) * len(cxpb_values) * len(mutpb_values)
+  
+  def unregister_funcs():
+    toolbox.unregister("attr_x")
+    toolbox.unregister("individual")
+    toolbox.unregister("population")
+    
+    toolbox.unregister("mate")
+    toolbox.unregister("mutate")
+    toolbox.unregister("select")
+    
+  best_values = (0.0, 0.0, 0.0, 0.0, 0.0)
+  best_fitness = -1000000
+  init_quad_opt(k, size)
+  
+  run_num = 0
+  
+  for a in alpha_values:
+    for i in indpb_values:
+      for t in tournsize_values:
+        for c in cxpb_values:
+          for m in mutpb_values:
+            init_ga_functions(size, a, i, t)
+            fitness = run_ga(toolbox.cqo_evaluate, 300, c, m, debug=-1)
+            unregister_funcs()
+            
+            run_perc = run_num / total_runs * 100.0
+            if run_perc % 10 <= 0.05:
+              print("Gird search at %.3f percent with best fitness of %.3f" % (run_perc, best_fitness))
+            
+            run_num += 1
+            
+            if fitness >= best_fitness:
+              best_fitness = fitness
+              best_values = (a, i, t, c, m)
+              
+  print("Best values from grid search evaluation is:\n\tAlpha:%.3f\n\tIndpb:%.3f\n\tTournsize:%i\n\tCxpb:%.3f\n\tMutpb:%.3f"
+        % best_values)
+  print("Best parameters had fitness: %.3f" % (best_fitness))
+  
+  toolbox.unregister("cqo_evaluate")
+  
+
 def run_ga(eval_function, num_gen, cxpb, mutpb, debug=0):
   """
   Run a genetic algorithm with the given evaluation function and input parameters.
@@ -137,7 +206,7 @@ def run_ga(eval_function, num_gen, cxpb, mutpb, debug=0):
 
   Returns
   -------
-  None.
+  Best fitness value out of all generations.
 
   """
   pop = toolbox.population(n=50)
@@ -149,9 +218,9 @@ def run_ga(eval_function, num_gen, cxpb, mutpb, debug=0):
     ind.fitness.values = fit
 
   for g in range(num_gen):
-    # Select the next generation individuals
+    # Select the next generation individuals (with replacement)
     offspring = toolbox.select(pop, len(pop))
-    # Clone the selected individuals
+    # Clone the selected individuals (since selection only took references rather than values)
     offspring = list(map(toolbox.clone, offspring))
     
     # Apply crossover and mutation on the offspring
@@ -171,9 +240,9 @@ def run_ga(eval_function, num_gen, cxpb, mutpb, debug=0):
     fitnesses = map(eval_function, invalid_ind)
     
     if debug >= 2:
-      print("Generation %i has min fitness value: %.3f" % (g, min(fit)))
+      print("Generation %i has min fitness value: %.3f" % (g, -max(fit)))
     elif debug == 1 and g % 10 == 0:
-      print("Generation %i has min fitness value: %.3f" % (g, min(fit)))
+      print("Generation %i has min fitness value: %.3f" % (g, -max(fit)))
     
     for ind, fit in zip(invalid_ind, fitnesses):
       ind.fitness.values = fit
@@ -182,9 +251,12 @@ def run_ga(eval_function, num_gen, cxpb, mutpb, debug=0):
     pop[:] = offspring
     hof.update(pop)
     
-  print("Convex quadratic optimization problem results:")
-  print("\tBest individual seen in all generations: \n\t\t%r" % (hof[0]))
-  print("\tBest individual seen fitness value: \n\t\t%.3f" % (hof[0].fitness.values[0]))
+  if debug >= 0:
+    print("Convex quadratic optimization problem results:")
+    print("\tBest individual seen in all generations: \n\t\t%r" % (hof[0]))
+    print("\tBest individual seen fitness value: \n\t\t%.3f" % (hof[0].fitness.values[0]))
+    
+  return hof[0].fitness.values[0]
 
   
 def build_parser():
@@ -199,15 +271,15 @@ def build_parser():
                       help='Number of individuals in the population', 
                       metavar='P')
   
-  parser.add_argument('-a', '--alpha', dest='alpha', type=float, default=0.5,
+  parser.add_argument('-a', '--alpha', dest='alpha', type=float, default=0.9,
                       help='Alpha used for blending individuals when mating', 
                       metavar='A')
   
-  parser.add_argument('-t', '--tournament-size', dest='tournsize', type=int, default=3,
+  parser.add_argument('-t', '--tournament-size', dest='tournsize', type=int, default=2,
                       help='The number of individuals per tournament during selection', 
                       metavar='T')
   
-  parser.add_argument('-i', '--indpb', dest='indpb', type=float, default=0.2,
+  parser.add_argument('-i', '--indpb', dest='indpb', type=float, default=0.7,
                       help='Probability that a gene will be mutated in a mutating individual', 
                       metavar='I')
   
@@ -215,11 +287,11 @@ def build_parser():
                       help='Number of generations to run through in algorithm', 
                       metavar='G')
   
-  parser.add_argument('-c', '--cxpb', dest='cxpb', type=float, default=0.5,
+  parser.add_argument('-c', '--cxpb', dest='cxpb', type=float, default=0.9,
                       help='Percentage chance that 2 individuals will be mated', 
                       metavar='C')
   
-  parser.add_argument('-m', '--mutpb', dest='mutpb', type=float, default=0.3,
+  parser.add_argument('-m', '--mutpb', dest='mutpb', type=float, default=0.9,
                       help='Percentage chance that an individual will be mutated', 
                       metavar='M')
   #=====================================================================================
@@ -233,7 +305,7 @@ def build_parser():
   
   #Arguments for Quadratic Optimization problem
   #=====================================================================================
-  parser.add_argument('-k', '--condition-number', dest='k', type=float, default=0.5,
+  parser.add_argument('-k', '--condition-number', dest='k', type=float, default=3,
                       help='The condition number that we want to approximate for A matrix', 
                       metavar='K')
   #=====================================================================================
@@ -260,14 +332,19 @@ def main():
   options = parser.parse_args()
   random.seed(options.seed)
   np.random.seed(options.seed)
-  init_ga_functions(options.size, options.alpha, options.indpb, options.tournsize)
   
-  if options.problems == 2:
-    init_quad_opt(options.k, options.size, options.debug)
-    run_ga(toolbox.cqo_evaluate, options.number_generations, options.cxpb, options.mutpb, options.debug)
-  elif options.problems == 0:
-    init_quad_opt(options.k, options.size, options.debug)
-    run_ga(toolbox.cqo_evaluate, options.number_generations, options.cxpb, options.mutpb, options.debug)
+  #Perform Grid search to find best hyperparameters to set as default
+  grid_search(options.k, options.size, [0.1, 0.3, 0.5, 0.7, 0.9], [0.1, 0.3, 0.5, 0.7, 0.9],
+              [2, 3, 4, 5], [0.1, 0.3, 0.5, 0.7, 0.9], [0.1, 0.3, 0.5, 0.7, 0.9])
+  
+  #init_ga_functions(options.size, options.alpha, options.indpb, options.tournsize)
+  
+  #if options.problems == 2:
+  #  init_quad_opt(options.k, options.size, options.debug)
+  #  run_ga(toolbox.cqo_evaluate, options.number_generations, options.cxpb, options.mutpb, options.debug)
+  #elif options.problems == 0:
+  #  init_quad_opt(options.k, options.size, options.debug)
+  #  run_ga(toolbox.cqo_evaluate, options.number_generations, options.cxpb, options.mutpb, options.debug)
 
 if __name__ == '__main__':
   main()
