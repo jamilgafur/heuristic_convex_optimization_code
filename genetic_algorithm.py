@@ -3,6 +3,9 @@
 Created on Sat Oct  3 09:07:53 2020
 
 @author: Cory Kromer-Edwards
+
+Genetic Algorithm code to build and run multiple genetic algorithms for 
+2 different optimization problems.
 """
 from argparse import ArgumentParser
 
@@ -160,7 +163,7 @@ def grid_search(k, size, alpha_values, indpb_values, tournsize_values, cxpb_valu
             unregister_funcs()
             
             run_perc = run_num / total_runs * 100.0
-            if run_perc % 10 <= 0.05:
+            if run_perc % 10 <= 0.02:
               print("Gird search at %.3f percent with best fitness of %.3f" % (run_perc, best_fitness))
             
             run_num += 1
