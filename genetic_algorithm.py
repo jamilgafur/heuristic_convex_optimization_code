@@ -112,17 +112,19 @@ def grid_search(k, size, alpha_values, indpb_values, tournsize_values, cxpb_valu
 
   Parameters
   ----------
-  size : TYPE
+  k : Integer
+    DESCRIPTION
+  size : Integer
     DESCRIPTION.
-  alpha_values : TYPE
+  alpha_values : List
     DESCRIPTION.
-  indpb_values : TYPE
+  indpb_values : List
     DESCRIPTION.
-  tournsize_values : TYPE
+  tournsize_values : List
     DESCRIPTION.
-  cxpb_values : TYPE
+  cxpb_values : List
     DESCRIPTION.
-  mutpb_values : TYPE
+  mutpb_values : List
     DESCRIPTION.
 
   Returns
@@ -307,9 +309,20 @@ def build_parser():
   
   #Arguments for Quadratic Optimization problem
   #=====================================================================================
-  parser.add_argument('-k', '--condition-number', dest='k', type=float, default=3,
+  parser.add_argument('-k', '--condition-number', dest='k', type=int, default=3,
                       help='The condition number that we want to approximate for A matrix', 
                       metavar='K')
+  #=====================================================================================
+  
+  #Output arguments
+  #=====================================================================================
+  parser.add_argument('-v', '--verbose', dest='debug', type=int, default=0,
+                      help='The log level for the algorithm. Values are [0, 1, 2]', 
+                      metavar='S')
+  
+  #(TODO)
+  #1. have option to output to excel/csv file
+  #2. have option to output fitness graph for genetic algorithm run
   #=====================================================================================
   
   #Misc arguments
@@ -318,16 +331,15 @@ def build_parser():
                       help='The random seed for the algorithm', 
                       metavar='S')
   
-  parser.add_argument('-v', '--verbose', dest='debug', type=int, default=0,
-                      help='The log level for the algorithm. Values are [0, 1, 2]', 
-                      metavar='S')
-  
   parser.add_argument('-r', '--problem-runs', dest='problems', type=int, default=2,
                       help='Which problems should be run. 0=just quad, 1=just non-convex, 2=both', 
                       metavar='R')
   
   parser.add_argument('-ai', '--all-inputs', dest='use_pred_inputs', action='store_true',
-                      help='If given, all problem inputs will be ignored and each chosen problem will go over all preset inputs.')
+                      help='If given, all problem inputs will be ignored and each chosen problem will go over all preset inputs')
+  
+  parser.add_argument('-gs', '--grid-search', dest='perform_grid_search', action='store_true',
+                      help='If given, grid search will be performed and then the program will exit.')
   #=====================================================================================
   
   return parser
@@ -348,19 +360,20 @@ def main():
   random.seed(options.seed)
   np.random.seed(options.seed)
   
-  #Perform Grid search to find best hyperparameters to set as default
-  #grid_search(options.k, options.size, [0.1, 0.3, 0.5, 0.7, 0.9], [0.1, 0.3, 0.5, 0.7, 0.9],
-  #            [2, 3, 4, 5], [0.1, 0.3, 0.5, 0.7, 0.9], [0.1, 0.3, 0.5, 0.7, 0.9])
-  
-  if options.use_pred_inputs:
-    for k in [3, 10, 30, 100, 300, 1000]:
-      for n in [2, 5, 10, 20, 50, 100]:
-        for steps in [100, 1000, 10000, 100000]:
-          print("Running for k =  %i, n = %i, steps = %i" % (k, n, steps))
-          run(options, k, n, steps)
-          print("")
+  if options.perform_grid_search:
+    #Perform Grid search to find best hyperparameters to set as default
+    grid_search(options.k, options.size, [0.1, 0.3, 0.5, 0.7, 0.9], [0.1, 0.3, 0.5, 0.7, 0.9],
+                [2, 3, 4, 5], [0.1, 0.3, 0.5, 0.7, 0.9], [0.1, 0.3, 0.5, 0.7, 0.9])
   else:
-    run(options, options.size, options.k, options.number_generations)
+    if options.use_pred_inputs:
+      for k in [3, 10, 30, 100, 300, 1000]:
+        for n in [2, 5, 10, 20, 50, 100]:
+          for steps in [100, 1000, 10000, 100000]:
+            print("Running for k =  %i, n = %i, steps = %i" % (k, n, steps))
+            run(options, k, n, steps)
+            print("")
+    else:
+      run(options, options.size, options.k, options.number_generations)
   
   
 
