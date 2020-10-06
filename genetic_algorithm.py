@@ -93,11 +93,31 @@ def init_ga_functions(size, alpha, indpb, tournsize):
   toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=1, indpb=indpb)
   toolbox.register("select", tools.selTournament, tournsize=tournsize)
   
-#Fitness evaluation methods
+#Fitness evaluation methods (must return iterable)
+#Remember, we want to minimize these functions, so to hurt them we need to return
+#large positive numbers.
 #=====================================================================================
 def evalutate_quad_opt(individual, A=None, b=None):
   x = np.array([individual]).T  #x as Column vector
-  return 0.5 * np.matmul(np.matmul(x.T, A), x) - np.matmul(b.T, x)
+  
+  #Have a very large fitness be returned if any value in x is nan (what we do not want)
+  for i in individual:
+    if np.isnan(i) or np.isinf(i):
+      return (1000000000,)
+  
+  #value =  0.5 * np.matmul(np.matmul(x.T, A), x) - np.matmul(b.T, x)
+  value = np.linalg.norm(np.matmul(A, x) - b, 2)
+  
+  #The problem will try to minimize too much (go beyond 0 for error) and become negative.
+  #We do not want this, so we want a function to max out at 10 and grow smaller once you
+  #go away from 0. -X^2 will give us that. We want a shallow curve though to have more 
+  #differentiation around 0.000. This will make sure the algorithm does not fall short
+  #once you start getting too close to 0.00. To do this, but still keep the shape, we
+  #use 1.2 for the power. (the fitness value is inverted, so -1 becomes +1 or invert 
+  #the graph of X^1.2, and that will be maximized)
+  value = pow(value, 1.2)
+  
+  return (value,)
 #=====================================================================================
 
 
@@ -105,6 +125,7 @@ def evalutate_quad_opt(individual, A=None, b=None):
 #=====================================================================================
 def init_quad_opt(k, size, debug=0):
   A, b = cqo_gen_input(k, size, debug)
+  print("Exact minimizer for problem is: %r" % (np.asarray(np.matmul(np.linalg.inv(A), b))))
   toolbox.register("cqo_evaluate", evalutate_quad_opt, A=A, b=b)
 #=====================================================================================
 
@@ -373,7 +394,7 @@ def main():
         for n in [2, 5, 10, 20, 50, 100]:
           for steps in [100, 1000, 10000, 100000]:
             print("Running for k =  %i, n = %i, steps = %i" % (k, n, steps))
-            run(options, k, n, steps)
+            run(options, n, k, steps)
             print("")
     else:
       run(options, options.size, options.k, options.number_generations)
