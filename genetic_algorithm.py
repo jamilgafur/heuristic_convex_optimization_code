@@ -125,7 +125,9 @@ def evalutate_quad_opt(individual, A=None, b=None):
 #=====================================================================================
 def init_quad_opt(k, size, debug=0):
   A, b = cqo_gen_input(k, size, debug)
-  print("Exact minimizer for problem is: %r" % (np.asarray(np.matmul(np.linalg.inv(A), b))))
+  if size < 20:
+    print("Exact minimizer for problem is: %r" % (np.asarray(np.matmul(np.linalg.inv(A), b))))
+    
   toolbox.register("cqo_evaluate", evalutate_quad_opt, A=A, b=b)
 #=====================================================================================
 
@@ -280,7 +282,9 @@ def run_ga(eval_function, num_gen, cxpb, mutpb, debug=0):
     
   if debug >= 0:
     print("Convex quadratic optimization problem results:")
-    print("\tBest individual seen in all generations:\t%r" % (hof[0]))
+    if len(hof[0]) < 20:
+      print("\tBest individual seen in all generations:\t%r" % (hof[0]))
+      
     print("\tBest individual seen fitness value:\t\t%.3f" % (-hof[0].fitness.values[0]))
     print("\tBest individual seen generation appeared in:\t%i" % (hof[0].generation))
     
