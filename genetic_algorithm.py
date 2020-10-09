@@ -17,7 +17,17 @@ from deap import base
 from deap import creator
 from deap import tools
 
+#
 from convex_quadratic_opt import generate_input as cqo_gen_input
+
+#For parallel computing
+import multiprocessing
+
+import matplotlib.pyplot as plt
+
+#Set up for numpy warnings within the fitness evaluation methods
+numpy.seterr(all='warn')
+import warnings
 
 #=====================================================================================
 #tools: A set of functions to be called during genetic algorithm operations (mutate, mate, select, etc)
@@ -105,19 +115,33 @@ def evalutate_quad_opt(individual, A=None, b=None):
     if np.isnan(i) or np.isinf(i):
       return (1000000000,)
   
-  #value =  0.5 * np.matmul(np.matmul(x.T, A), x) - np.matmul(b.T, x)
-  value = np.linalg.norm(np.matmul(A, x) - b, 2)
-  
-  #The problem will try to minimize too much (go beyond 0 for error) and become negative.
-  #We do not want this, so we want a function to max out at 10 and grow smaller once you
-  #go away from 0. -X^2 will give us that. We want a shallow curve though to have more 
-  #differentiation around 0.000. This will make sure the algorithm does not fall short
-  #once you start getting too close to 0.00. To do this, but still keep the shape, we
-  #use 1.2 for the power. (the fitness value is inverted, so -1 becomes +1 or invert 
-  #the graph of X^1.2, and that will be maximized)
-  value = pow(value, 1.2)
-  
+  #There may be times where the numpy doing the math operations will have an
+  #overflow warning, or another warning. In these cases, we want to return
+  #the largest possible fitness since this is something unwanted.
+  with warnings.catch_warnings():
+    
+    #We only want to filter warnings for these few lines of code, not the 
+    #entire file. Having these lines within the "with" block ensures this
+    #filtering only occurs here.
+    warnings.filterwarnings('error')
+    
+    try:
+      #value =  0.5 * np.matmul(np.matmul(x.T, A), x) - np.matmul(b.T, x)
+      value = np.linalg.norm(np.matmul(A, x) - b, 2)
+      
+      #The problem will try to minimize too much (go beyond 0 for error) and become negative.
+      #We do not want this, so we want a function to max out at 10 and grow smaller once you
+      #go away from 0. -X^2 will give us that. We want a shallow curve though to have more 
+      #differentiation around 0.000. This will make sure the algorithm does not fall short
+      #once you start getting too close to 0.00. To do this, but still keep the shape, we
+      #use 1.2 for the power. (the fitness value is inverted, so -1 becomes +1 or invert 
+      #the graph of X^1.2, and that will be maximized)
+      value = pow(value, 1.2)
+    except Warning:
+      value = 1000000000
+    
   return (value,)
+  
 #=====================================================================================
 
 
@@ -171,7 +195,7 @@ def grid_search(k, size, alpha_values, indpb_values, tournsize_values, cxpb_valu
     toolbox.unregister("select")
     
   best_values = (0.0, 0.0, 0.0, 0.0, 0.0)
-  best_fitness = -1000000
+  best_fitness = -90000000
   init_quad_opt(k, size)
   
   run_num = 0
@@ -388,15 +412,16 @@ def main():
   random.seed(options.seed)
   np.random.seed(options.seed)
   
+  
   if options.perform_grid_search:
     #Perform Grid search to find best hyperparameters to set as default
     grid_search(options.k, options.size, [0.1, 0.3, 0.5, 0.7, 0.9], [0.1, 0.3, 0.5, 0.7, 0.9],
                 [2, 3, 4, 5], [0.1, 0.3, 0.5, 0.7, 0.9], [0.1, 0.3, 0.5, 0.7, 0.9])
   else:
     if options.use_pred_inputs:
-      for k in [3, 10, 30, 100, 300, 1000]:
-        for n in [2, 5, 10, 20, 50, 100]:
-          for steps in [100, 1000, 10000, 100000]:
+      for steps in [100, 1000, 10000, 100000]:
+        for k in [3, 10, 30, 100, 300, 1000]:
+          for n in [2, 5, 10, 20, 50, 100]:
             print("Running for k =  %i, n = %i, steps = %i" % (k, n, steps))
             run(options, n, k, steps)
             print("")
@@ -406,5 +431,10 @@ def main():
   
 
 if __name__ == '__main__':
-  main()
+  #For parallel computing
+  #multiprocessing.freeze_support()
+  with multiprocessing.Pool(5) as pool:
+    toolbox.register("map", pool.map)
+    
+    main()
 
