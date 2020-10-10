@@ -17,15 +17,18 @@ from deap import base
 from deap import creator
 from deap import tools
 
-#
+#Imports for problems
 from convex_quadratic_opt import generate_input as cqo_gen_input
 
 #For parallel computing
 import multiprocessing
 
+#For graphing
 import matplotlib.pyplot as plt
 
 #Set up for numpy warnings within the fitness evaluation methods
+#By default, warnings are just printed to stderr rather than thrown
+#We want warnings to be thrown as warnings to be able to catch them later.
 numpy.seterr(all='warn')
 import warnings
 
@@ -206,7 +209,8 @@ def grid_search(k, size, alpha_values, indpb_values, tournsize_values, cxpb_valu
         for c in cxpb_values:
           for m in mutpb_values:
             init_ga_functions(size, a, i, t)
-            fitness = run_ga(toolbox.cqo_evaluate, 300, c, m, debug=-1).fitness.values[0]
+            fitness, _ = run_ga(toolbox.cqo_evaluate, 300, c, m, debug=-1)
+            fitness = fitness.fitness.values[0]
             unregister_funcs()
             
             run_perc = run_num / total_runs * 100.0
@@ -226,7 +230,7 @@ def grid_search(k, size, alpha_values, indpb_values, tournsize_values, cxpb_valu
   toolbox.unregister("cqo_evaluate")
   
 
-def run_ga(eval_function, num_gen, cxpb, mutpb, debug=0):
+def run_ga(eval_function, stats, num_gen, cxpb, mutpb, debug=0):
   """
   Run a genetic algorithm with the given evaluation function and input parameters.
   Main portion of code for this method found from Deap example at URL:
@@ -263,11 +267,16 @@ def run_ga(eval_function, num_gen, cxpb, mutpb, debug=0):
   """
   pop = toolbox.population(n=50)
   hof = tools.HallOfFame(25)
+  logbook = tools.Logbook()
   
   # Evaluate the entire population
   fitnesses = list(map(eval_function, pop))
   for ind, fit in zip(pop, fitnesses):
     ind.fitness.values = fit
+    
+  record = stats.compile(pop)
+  logbook.record(gen=0, **record)
+  
 
   for g in range(num_gen):
     # Select the next generation individuals (with replacement)
@@ -303,6 +312,8 @@ def run_ga(eval_function, num_gen, cxpb, mutpb, debug=0):
     # The population is entirely replaced by the offspring
     pop[:] = offspring
     hof.update(pop)
+    record = stats.compile(pop)
+    logbook.record(gen = g + 1, **record)
     
   if debug >= 0:
     print("Convex quadratic optimization problem results:")
@@ -312,7 +323,7 @@ def run_ga(eval_function, num_gen, cxpb, mutpb, debug=0):
     print("\tBest individual seen fitness value:\t\t%.3f" % (-hof[0].fitness.values[0]))
     print("\tBest individual seen generation appeared in:\t%i" % (hof[0].generation))
     
-  return hof[0]
+  return hof[0], logbook
 
   
 def build_parser():
@@ -396,15 +407,33 @@ def build_parser():
   
   return parser
 
-def run(options, size, k, number_generations):
+def run(options, stats, size, k, number_generations):
   init_ga_functions(size, options.alpha, options.indpb, options.tournsize)
   
   if options.problems == 2:
     init_quad_opt(k, size, options.debug)
-    run_ga(toolbox.cqo_evaluate, number_generations, options.cxpb, options.mutpb, options.debug)
+    _, logbook =  run_ga(toolbox.cqo_evaluate, stats, number_generations, options.cxpb, options.mutpb, options.debug)
   elif options.problems == 0:
     init_quad_opt(k, size, options.debug)
-    run_ga(toolbox.cqo_evaluate, number_generations, options.cxpb, options.mutpb, options.debug)
+    _, logbook =  run_ga(toolbox.cqo_evaluate, stats, number_generations, options.cxpb, options.mutpb, options.debug)
+    
+  return logbook
+
+def plot_multi_data(gen, data_dict):
+  for key, values in data_dict.items():
+    plt.plot(gen, values, 'b-', label=key)
+    
+  legend = plt.legend(ncol=3, title='Key:', bbox_to_anchor=(1.04, 1))
+  plt.xlabel('Generation')
+  plt.ylabel("Fitness")
+  plt.savefig('ga_' + str(len(gen)) + '.svg', bbox_extra_artists=(legend,), bbox_inches='tight')
+  
+def plot_single_data(gen, data, key):
+  plt.plot(gen, data, 'b-', label=key)
+  legend = plt.legend(title='Key:', bbox_to_anchor=(1.04, 1))
+  plt.xlabel('Generation')
+  plt.ylabel("Fitness")
+  plt.savefig('ga__single_' + str(len(gen)) + '.svg', bbox_extra_artists=(legend,), bbox_inches='tight')
   
 def main():
   parser = build_parser()
@@ -420,13 +449,31 @@ def main():
   else:
     if options.use_pred_inputs:
       for steps in [100, 1000, 10000, 100000]:
+        log_dict = dict()
         for k in [3, 10, 30, 100, 300, 1000]:
           for n in [2, 5, 10, 20, 50, 100]:
+            stats = tools.Statistics(key=lambda ind: -ind.fitness.values[0])
+            stats.register("avg", numpy.mean)
+            stats.register("std", numpy.std)
+            stats.register("min", numpy.min)
+            stats.register("max", numpy.max)
             print("Running for k =  %i, n = %i, steps = %i" % (k, n, steps))
-            run(options, n, k, steps)
+            logbook = run(options, stats, n, k, steps)
             print("")
+            
+            log_dict["k=" + str(k) + ", n=" + str(n)] = logbook.select("max")
+            gen = logbook.select('gen')
+            
+        plot_multi_data(gen, log_dict)
     else:
-      run(options, options.size, options.k, options.number_generations)
+      stats = tools.Statistics(key=lambda ind: -ind.fitness.values[0])
+      stats.register("avg", numpy.mean)
+      stats.register("std", numpy.std)
+      stats.register("min", numpy.min)
+      stats.register("max", numpy.max)
+      logbook = run(options, stats, options.size, options.k, options.number_generations)
+      gen, max_results = logbook.select("gen", "max")
+      plot_single_data(gen, max_results, "k=" + str(options.k) + ", n=" + str(options.size))
   
   
 
@@ -435,6 +482,5 @@ if __name__ == '__main__':
   #multiprocessing.freeze_support()
   with multiprocessing.Pool(5) as pool:
     toolbox.register("map", pool.map)
-    
     main()
 
