@@ -77,7 +77,7 @@ creator.create("Individual", list, fitness=creator.FitnessMin, generation=0)
 
 toolbox = base.Toolbox()
 
-def init_ga_functions(size, alpha, indpb, tournsize):
+def init_ga_functions(size, mu, sigma, alpha, indpb, tournsize):
   """
   Create the function aliases needed to generate the population.
 
@@ -103,7 +103,7 @@ def init_ga_functions(size, alpha, indpb, tournsize):
   toolbox.register("population", tools.initRepeat, list, toolbox.individual)
   
   toolbox.register("mate", tools.cxBlend, alpha=alpha)
-  toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=1, indpb=indpb)
+  toolbox.register("mutate", tools.mutGaussian, mu=mu, sigma=sigma, indpb=indpb)
   toolbox.register("select", tools.selTournament, tournsize=tournsize)
   
 #Fitness evaluation methods (must return iterable)
@@ -139,7 +139,7 @@ def evalutate_quad_opt(individual, A=None, b=None):
       #once you start getting too close to 0.00. To do this, but still keep the shape, we
       #use 1.2 for the power. (the fitness value is inverted, so -1 becomes +1 or invert 
       #the graph of X^1.2, and that will be maximized)
-      value = pow(value, 1.2)
+      value = pow(value, 8)
     except Warning:
       value = 1000000000
     
@@ -158,7 +158,7 @@ def init_quad_opt(k, size, debug=0):
   toolbox.register("cqo_evaluate", evalutate_quad_opt, A=A, b=b)
 #=====================================================================================
 
-def grid_search(k, size, alpha_values, indpb_values, tournsize_values, cxpb_values, mutpb_values):
+def grid_search(k, size, mu_values, sigma_values, alpha_values, indpb_values, tournsize_values, cxpb_values, mutpb_values):
   """
   Performs grid search over all hyperparameters for a particular problem. The
   best values for each hyperparam will be printet when finished to be set as default.
@@ -186,7 +186,17 @@ def grid_search(k, size, alpha_values, indpb_values, tournsize_values, cxpb_valu
 
   """
   
-  total_runs = len(alpha_values) * len(indpb_values) * len(tournsize_values) * len(cxpb_values) * len(mutpb_values)
+  #Variables and progress bar code from:
+  #https://stackoverflow.com/a/34325723
+  total = len(mu_values) * len(sigma_values) * len(alpha_values) * len(indpb_values) \
+                * len(tournsize_values) * len(cxpb_values) * len(mutpb_values)
+  iteration = 0
+  decimals = 3
+  prefix = 'Progress:'
+  suffix = 'Complete--Best fitness: '
+  length = 100
+  fill = '#'
+  printEnd = "\r"
   
   def unregister_funcs():
     toolbox.unregister("attr_x")
@@ -197,33 +207,51 @@ def grid_search(k, size, alpha_values, indpb_values, tournsize_values, cxpb_valu
     toolbox.unregister("mutate")
     toolbox.unregister("select")
     
-  best_values = (0.0, 0.0, 0.0, 0.0, 0.0)
-  best_fitness = -90000000
+  best_values = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+  best_fitness = 90000000
   init_quad_opt(k, size)
   
-  run_num = 0
+  #last_perc = -1.0
   
-  for a in alpha_values:
-    for i in indpb_values:
-      for t in tournsize_values:
-        for c in cxpb_values:
-          for m in mutpb_values:
-            init_ga_functions(size, a, i, t)
-            fitness, _ = run_ga(toolbox.cqo_evaluate, 300, c, m, debug=-1)
-            fitness = fitness.fitness.values[0]
-            unregister_funcs()
-            
-            run_perc = run_num / total_runs * 100.0
-            if run_perc % 10 <= 0.02:
-              print("Gird search at %.3f percent with best fitness of %.3f" % (run_perc, best_fitness))
-            
-            run_num += 1
-            
-            if fitness >= best_fitness:
-              best_fitness = fitness
-              best_values = (a, i, t, c, m)
+  for mu in mu_values:
+    for si in sigma_values:
+      for a in alpha_values:
+        for i in indpb_values:
+          for t in tournsize_values:
+            for c in cxpb_values:
+              for m in mutpb_values:
+                init_ga_functions(size, mu, si, a, i, t)
+                stats = tools.Statistics(key=lambda ind: ind.fitness.values[0])
+                stats.register("avg", numpy.mean)
+                fitness, _ = run_ga(toolbox.cqo_evaluate, stats, 300, c, m, debug=-1)
+                fitness = fitness.fitness.values[0]
+                unregister_funcs()
+                
+                if fitness <= best_fitness:
+                  best_fitness = fitness
+                  best_values = (mu, si, a, i, t, c, m)
+                
+                #run_perc = round(run_num / total_runs * 100.0)
+                #if run_perc % 10 == 0.0 and last_perc != run_perc:
+                #  print("Gird search at %.3f percent with best fitness of %.3f" % (run_perc, best_fitness))
+                #  last_perc = run_perc
+                
+                #Progress bar code
+                #======================================================================================
+                percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+                best_fitness_str = ("{0:." + str(decimals) + "f}").format(best_fitness)
+                filledLength = int(length * iteration // total)
+                bar = fill * filledLength + '-' * (length - filledLength)
+                print(f'\r{prefix} |{bar}| {percent}% {suffix} {best_fitness_str}', end = printEnd)
+                # Print New Line on Complete
+                if iteration == total: 
+                  print()
+                #======================================================================================
+                
+                iteration += 1
+                
               
-  print("Best values from grid search evaluation is:\n\tAlpha:%.3f\n\tIndpb:%.3f\n\tTournsize:%i\n\tCxpb:%.3f\n\tMutpb:%.3f"
+  print("Best values from grid search evaluation is:\n\tMu:%.3f\n\tSigma:%.3f\n\tAlpha:%.3f\n\tIndpb:%.3f\n\tTournsize:%i\n\tCxpb:%.3f\n\tMutpb:%.3f"
         % best_values)
   print("Best parameters had fitness: %.3f" % (best_fitness))
   
@@ -270,7 +298,7 @@ def run_ga(eval_function, stats, num_gen, cxpb, mutpb, debug=0):
   logbook = tools.Logbook()
   
   # Evaluate the entire population
-  fitnesses = list(map(eval_function, pop))
+  fitnesses = list(toolbox.map(eval_function, pop))
   for ind, fit in zip(pop, fitnesses):
     ind.fitness.values = fit
     
@@ -282,7 +310,7 @@ def run_ga(eval_function, stats, num_gen, cxpb, mutpb, debug=0):
     # Select the next generation individuals (with replacement)
     offspring = toolbox.select(pop, len(pop))
     # Clone the selected individuals (since selection only took references rather than values)
-    offspring = list(map(toolbox.clone, offspring))
+    offspring = list(toolbox.map(toolbox.clone, offspring))
     
     # Apply crossover and mutation on the offspring
     for child1, child2 in zip(offspring[::2], offspring[1::2]):
@@ -298,12 +326,12 @@ def run_ga(eval_function, stats, num_gen, cxpb, mutpb, debug=0):
 
     # Evaluate the individuals with an invalid fitness
     invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
-    fitnesses = map(eval_function, invalid_ind)
+    fitnesses = toolbox.map(eval_function, invalid_ind)
     
     if debug >= 2:
-      print("Generation %i has min fitness value: %.3f" % (g, -max(fit)))
+      print("Generation %i has min fitness value: %.3f" % (g, max(fit)))
     elif debug == 1 and g % 10 == 0:
-      print("Generation %i has min fitness value: %.3f" % (g, -max(fit)))
+      print("Generation %i has min fitness value: %.3f" % (g, max(fit)))
     
     for ind, fit in zip(invalid_ind, fitnesses):
       ind.fitness.values = fit
@@ -320,7 +348,7 @@ def run_ga(eval_function, stats, num_gen, cxpb, mutpb, debug=0):
     if len(hof[0]) < 20:
       print("\tBest individual seen in all generations:\t%r" % (hof[0]))
       
-    print("\tBest individual seen fitness value:\t\t%.3f" % (-hof[0].fitness.values[0]))
+    print("\tBest individual seen fitness value:\t\t%.3f" % (hof[0].fitness.values[0]))
     print("\tBest individual seen generation appeared in:\t%i" % (hof[0].generation))
     
   return hof[0], logbook
@@ -338,7 +366,7 @@ def build_parser():
                       help='Number of individuals in the population', 
                       metavar='P')
   
-  parser.add_argument('-a', '--alpha', dest='alpha', type=float, default=0.9,
+  parser.add_argument('-a', '--alpha', dest='alpha', type=float, default=0.3,
                       help='Alpha used for blending individuals when mating', 
                       metavar='A')
   
@@ -346,7 +374,7 @@ def build_parser():
                       help='The number of individuals per tournament during selection', 
                       metavar='T')
   
-  parser.add_argument('-i', '--indpb', dest='indpb', type=float, default=0.9,
+  parser.add_argument('-i', '--indpb', dest='indpb', type=float, default=0.3,
                       help='Probability that a gene will be mutated in a mutating individual', 
                       metavar='I')
   
@@ -354,13 +382,21 @@ def build_parser():
                       help='Number of generations to run through in algorithm', 
                       metavar='G')
   
-  parser.add_argument('-c', '--cxpb', dest='cxpb', type=float, default=0.9,
+  parser.add_argument('-c', '--cxpb', dest='cxpb', type=float, default=0.7,
                       help='Percentage chance that 2 individuals will be mated', 
                       metavar='C')
   
-  parser.add_argument('-m', '--mutpb', dest='mutpb', type=float, default=0.7,
+  parser.add_argument('-m', '--mutpb', dest='mutpb', type=float, default=0.9,
                       help='Percentage chance that an individual will be mutated', 
                       metavar='M')
+  
+  parser.add_argument('-mu', '--gausian-mean', dest='mu', type=float, default=0,
+                      help='The mean to use in the gausian distrobution when mutating genes', 
+                      metavar='MU')
+  
+  parser.add_argument('-si', '--gausian-sigma', dest='sigma', type=float, default=0.005,
+                      help='The standard deviation to use in the gausian distrobution when mutating genes', 
+                      metavar='SI')
   #=====================================================================================
   
   #General arguments for problems
@@ -408,7 +444,7 @@ def build_parser():
   return parser
 
 def run(options, stats, size, k, number_generations):
-  init_ga_functions(size, options.alpha, options.indpb, options.tournsize)
+  init_ga_functions(size, options.mu, options.sigma, options.alpha, options.indpb, options.tournsize)
   
   if options.problems == 2:
     init_quad_opt(k, size, options.debug)
@@ -444,15 +480,16 @@ def main():
   
   if options.perform_grid_search:
     #Perform Grid search to find best hyperparameters to set as default
-    grid_search(options.k, options.size, [0.1, 0.3, 0.5, 0.7, 0.9], [0.1, 0.3, 0.5, 0.7, 0.9],
-                [2, 3, 4, 5], [0.1, 0.3, 0.5, 0.7, 0.9], [0.1, 0.3, 0.5, 0.7, 0.9])
+    grid_search(options.k, options.size, [1.0, 0.5, 0.0, -0.5, -1.0], [0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005], 
+                [0.1, 0.3, 0.5, 0.7, 0.9], [0.1, 0.3, 0.5, 0.7, 0.9], [2, 3, 4, 5], [0.1, 0.3, 0.5, 0.7, 0.9], 
+                [0.1, 0.3, 0.5, 0.7, 0.9])
   else:
     if options.use_pred_inputs:
       for steps in [100, 1000, 10000, 100000]:
         log_dict = dict()
         for k in [3, 10, 30, 100, 300, 1000]:
           for n in [2, 5, 10, 20, 50, 100]:
-            stats = tools.Statistics(key=lambda ind: -ind.fitness.values[0])
+            stats = tools.Statistics(key=lambda ind: ind.fitness.values[0])
             stats.register("avg", numpy.mean)
             stats.register("std", numpy.std)
             stats.register("min", numpy.min)
@@ -466,7 +503,7 @@ def main():
             
         plot_multi_data(gen, log_dict)
     else:
-      stats = tools.Statistics(key=lambda ind: -ind.fitness.values[0])
+      stats = tools.Statistics(key=lambda ind: ind.fitness.values[0])
       stats.register("avg", numpy.mean)
       stats.register("std", numpy.std)
       stats.register("min", numpy.min)
