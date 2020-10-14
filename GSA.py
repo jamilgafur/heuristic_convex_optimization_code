@@ -110,9 +110,10 @@ class GSA:
 np.random.seed(1)
 random.seed(1)
 np.set_printoptions(linewidth=np.inf) 
-# k    =  condition number
+# k    = condition number
 # size =  size of square matrix (nxn)
 A, b = GA.cqo_gen_input(100,5, False)
+
 def evalutate_quad_opt(individual):
   x = np.array(individual, dtype=float)
   #np.array([individual]).T  #x as Column vector
