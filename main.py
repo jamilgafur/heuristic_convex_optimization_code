@@ -13,13 +13,7 @@ np.random.seed(1)
 np.set_printoptions(linewidth=np.inf) 
 
 
-dimension = 5
-k = 100
-debug = False
-# global variables
-A, b = GA.cqo_gen_input(k, dimension, debug)
-    
-
+A , b = None, None
 # optimization function    
 def evalutate_quad_opt(individual):
   x = np.array(individual, dtype=float)
@@ -32,14 +26,22 @@ def init_gsa(pop, dime, miter, cost_func):
     gsa.cost_func = cost_func
     return gsa
 
-def init_ga():
-    # something here
-    return None;
 
 def main():
-    # loop over some things and do some kinda study
-    gsa = init_gsa(3, 5, 100, evalutate_quad_opt)
-    gsa.start()
+
+    global A
+    global b
+    # we want to study rate of convergence for population and iteration size 
+    # at different dimensions
+    # we define converge after 10 iteration amount change <= .0007
+    for dimension in range(2,10,2):
+        A, b= GA.cqo_gen_input(100, dimension, False)
+        for pop in range(10,100,10):
+            gsa = init_gsa(pop, dimension, 100, evalutate_quad_opt)
+            gsa_output = gsa.start()    
+            text_file = open("GSA_dim_{}_pop{}_iter{}.txt".format(dimension, pop, 100), "w")
+            text_file.write(gsa_output)
+            text_file.close()
         
 
 

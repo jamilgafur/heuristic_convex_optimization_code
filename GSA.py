@@ -1,8 +1,5 @@
-from matplotlib import pyplot as plt
 
 import numpy as np
-import genetic_algorithm as GA
-import random
 
 class GSA:
     def __init__(self, pop_size=1, dimension=1, max_iter=100):
@@ -107,6 +104,5 @@ class GSA:
             self.write_out += "avg: {} |itr: {} |bsf: {}\n".format(iterave, _iter, bsf[-1]) 
             print("avg: {} |itr: {} |bsf: {}".format(iterave, _iter, bsf[-1]) )
             _iter += 1
-        text_file = open("GSA_pop{}_iter{}.txt".format(self.pop_size, self.max_iter), "r+")
-        text_file.write(self.write_out)
-        text_file.close()
+
+        return self.write_out
