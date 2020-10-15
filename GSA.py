@@ -3,6 +3,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 import genetic_algorithm as GA
 import random
+
 class GSA:
     def __init__(self, pop_size=1, dimension=1, max_iter=100):
         self.cost_func = None
@@ -14,6 +15,8 @@ class GSA:
         self.dimension = dimension
         self.best_so_far = None
 
+        self.write_out = ""
+        
         self.X = np.random.rand(pop_size, dimension)
         self.V = np.random.rand(pop_size, dimension)
         self.f = np.full((pop_size, dimension), None)  # None  # Will become a list inside cal_f
@@ -98,29 +101,12 @@ class GSA:
             self.move()
             self.update_best_so_far()
 
-            avg.append(sum(self.cost_matrix) / len(self.cost_matrix))
+            iterave = sum(self.cost_matrix) / len(self.cost_matrix)
+            avg.append(iterave)         
             bsf.append(self.evaluate(self.best_so_far))
-
+            self.write_out += "avg: {} |itr: {} |bsf: {}\n".format(iterave, _iter, bsf[-1]) 
+            print("avg: {} |itr: {} |bsf: {}".format(iterave, _iter, bsf[-1]) )
             _iter += 1
-        else:
-            self.show_results()
-            plt.plot(avg, color='gold')
-            plt.show()
-
-np.random.seed(1)
-random.seed(1)
-np.set_printoptions(linewidth=np.inf) 
-# k    = condition number
-# size =  size of square matrix (nxn)
-A, b = GA.cqo_gen_input(100,5, False)
-
-def evalutate_quad_opt(individual):
-  x = np.array(individual, dtype=float)
-  #np.array([individual]).T  #x as Column vector
-  value = 0.5 * np.matmul(np.matmul(x.T, A), x) - np.matmul(b.T, x)
-  #value = np.linalg.norm(np.matmul(A, x) - b, 2)
-  return 1/value
-
-gsa = GSA(pop_size=3, dimension=5, max_iter=100)
-gsa.cost_func = evalutate_quad_opt
-gsa.start()
+        text_file = open("GSA_pop{}_iter{}.txt".format(self.pop_size, self.max_iter), "r+")
+        text_file.write(self.write_out)
+        text_file.close()
