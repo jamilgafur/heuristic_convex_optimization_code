@@ -2,7 +2,7 @@
 """
 Created on Sun Oct 11 15:55:47 2020
 
-@author: Cory
+@author: Cory Kromer-Edwards
 """
 
 import random

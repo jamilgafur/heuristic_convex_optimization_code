@@ -2,7 +2,7 @@
 """
 Created on Sun Oct 11 15:52:40 2020
 
-@author: Cory
+@author: Cory Kromer-Edwards
 """
 
 from argparse import ArgumentParser
@@ -23,16 +23,15 @@ import matplotlib.pyplot as plt
 #For outputing csv
 import csv
 
-def print_progress_bar(iteration, total, best_fitness, decimals=3, length=100, fill='#', prefix='Progress:', suffix='Complete--Best fitness: ', printEnd='\r'):
+def print_progress_bar(iteration, total, decimals=3, length=100, fill='#', prefix='Progress:', suffix='Complete', printEnd='\r'):
   """
   Variables and progress bar code from:
   https://stackoverflow.com/a/34325723
   """
   percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-  best_fitness_str = ("{0:." + str(decimals) + "f}").format(best_fitness)
   filledLength = int(length * iteration // total)
   bar = fill * filledLength + '-' * (length - filledLength)
-  print(f'\r{prefix} |{bar}| {percent}% {suffix} {best_fitness_str}', end = printEnd)
+  print(f'\r{prefix} |{bar}| {percent}% {suffix}', end = printEnd)
   # Print New Line on Complete
   if iteration == total: 
     print()
@@ -50,10 +49,19 @@ def grid_search(is_threaded, k, size, alg_import):
 
   Parameters
   ----------
+  is_threaded : Boolean
+    Should the grid search be distributed.
   k : Integer
-    DESCRIPTION
-  size : Integer
-    DESCRIPTION.
+    Condition number to use.
+  size : Int
+    Size of square A matrix.
+  alg_import : Module
+    Imported algorithm module to be used.
+
+  Raises
+  ------
+  exc
+    Exception that may occur in a sub process.
 
   Returns
   -------
@@ -92,7 +100,7 @@ def grid_search(is_threaded, k, size, alg_import):
           best_fitness = fitness
           best_values = params
           
-        print_progress_bar(iteration, total, best_fitness)
+        print_progress_bar(iteration, total, suffix=("Complete--Best fitness: {0:.3f}").format(best_fitness))
         iteration += 1
                     
     if is_threaded:
@@ -108,7 +116,7 @@ def grid_search(is_threaded, k, size, alg_import):
             best_fitness = fitness
             best_values = parameters
             
-          print_progress_bar(iteration, total, best_fitness)
+          print_progress_bar(iteration, total, suffix=("Complete--Best fitness: {0:.3f}").format(best_fitness))
           iteration += 1
   finally:
     if is_threaded:
@@ -284,8 +292,8 @@ def setup_alg(options, alg_import):
   ----------
   options : NameSpace
     All user given or default values for setup.
-  alg : Algorithm import
-    The import of an algorithm file that will be used.
+  alg_import : Algorithm import
+    The import module of an algorithm file that will be used.
 
   Returns
   -------
@@ -297,6 +305,7 @@ def setup_alg(options, alg_import):
     grid_search(options.is_threaded, options.k, options.size, alg_import)
   else:
     if options.use_pred_inputs:
+      run_num = 1
       for steps in [100, 1000, 10000, 100000]:
         options.number_generations = steps
         log_dict = dict()
@@ -318,6 +327,8 @@ def setup_alg(options, alg_import):
                 key = "k=" + str(k) + ", n=" + str(n)
                 log_dict[key] = logbook
                 iterations = logbook.get('iterations')
+                print_progress_bar(run_num, 144)
+                run_num +=1
               
           if options.is_threaded:
             for future in futures:
@@ -330,6 +341,8 @@ def setup_alg(options, alg_import):
               else:
                 log_dict[key] = logbook
                 iterations = logbook.get('iterations')
+                print_progress_bar(run_num, 144)
+                run_num +=1
         finally:
           if options.is_threaded:
             executor.close()
@@ -357,6 +370,7 @@ def main():
   random.seed(options.seed)
   np.random.seed(options.seed)
   
+  #Add imported algorithm modules to this list to have them be used.
   for alg in [ga]:
     setup_alg(options, alg)
   
