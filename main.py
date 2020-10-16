@@ -20,6 +20,9 @@ import genetic_algorithm_v2 as ga
 #For graphing
 import matplotlib.pyplot as plt
 
+#For outputing csv
+import csv
+
 def print_progress_bar(iteration, total, best_fitness, decimals=3, length=100, fill='#', prefix='Progress:', suffix='Complete--Best fitness: ', printEnd='\r'):
   """
   Variables and progress bar code from:
@@ -179,13 +182,15 @@ def build_parser():
   
   #Output arguments
   #=====================================================================================
-  parser.add_argument('-v', '--verbose', dest='debug', type=int, default=0,
-                      help='The log level for the algorithm. Values are [0, 1, 2]', 
+  parser.add_argument('-v', '--verbose', dest='debug', type=int, default=-1,
+                      help='The log level for the algorithm. Values are [-1, 0, 1, 2]. -1 = no output', 
                       metavar='S')
   
-  #(TODO)
-  #1. have option to output to excel/csv file
-  #2. have option to output fitness graph for genetic algorithm run
+  parser.add_argument('--output-csv', dest='is_csv_exported', action='store_true',
+                      help='If given, csv file(s) will be generated  from runs.')
+  
+  parser.add_argument('--output-plot', dest='is_plot_exported', action='store_true',
+                      help='If given, plot file(s) will be generated  from runs.')
   #=====================================================================================
   
   #Misc arguments
@@ -238,27 +243,37 @@ def run_alg(options, alg_class):
 
 #Data output methods
 #==============================================================================================================
-def plot_multi_data(iterations, data_dict):
+def plot_multi_data(iterations, data_dict, alg_import):
   for key, values in data_dict.items():
-    plt.plot(iterations, values, 'b-', label=key)
+    plt.plot(iterations, values.get("min"), 'b-', label=key)
     
   legend = plt.legend(ncol=3, title='Key:', bbox_to_anchor=(1.04, 1))
   plt.xlabel('Iteration')
   plt.ylabel("Error")
-  plt.savefig('ga_' + str(len(iterations)) + '.svg', bbox_extra_artists=(legend,), bbox_inches='tight')
+  plt.savefig(alg_import.to_string() + "_" + str(len(iterations)) + '.svg', bbox_extra_artists=(legend,), bbox_inches='tight')
   
-def plot_single_data(iterations, data, key):
+def plot_single_data(iterations, data, key, alg_import):
   plt.plot(iterations, data, 'b-', label=key)
   legend = plt.legend(title='Key:', bbox_to_anchor=(1.04, 1))
   plt.xlabel('Iteration')
   plt.ylabel("Error")
-  plt.savefig('ga__single_' + str(len(iterations)) + '.svg', bbox_extra_artists=(legend,), bbox_inches='tight')
+  plt.savefig(alg_import.to_string() + '__single_' + str(len(iterations)) + '.svg', bbox_extra_artists=(legend,), bbox_inches='tight')
   
-def save_csv_multi():
-  hello = 1
+def save_csv_multi(iterations, output_dict, alg_import):
+  with open("csvs\\" + alg_import.to_string() + "_" + str(len(iterations)) + "_all.csv", 'w', newline='\n', encoding='utf-8') as csv_file:
+    writer = csv.writer(csv_file)
+    writer.writerow(["Key", "Iteration", "Min", "Max", "Average", "Std. Dev."])
+    for key, (_, mins, maxs, avgs, stds) in output_dict.items():
+      for i, mi, ma, a, s in zip(iterations, mins, maxs, avgs, stds):
+        writer.writerow([key, i, mi, ma, a, s])
   
-def save_csv_single():
-  hello = 1
+def save_csv_single(iterations, output_dict, key, alg_import):
+  with open("csvs\\" + alg_import.to_string() + "_" + str(len(iterations)) + "_single.csv", 'w', newline='\n', encoding='utf-8') as csv_file:
+    writer = csv.writer(csv_file)
+    writer.writerow(["Key", "Iteration", "Min", "Max", "Average", "Std. Dev."])
+    _, mins, maxs, avgs, stds = output_dict.values()
+    for i, mi, ma, a, s in zip(iterations, mins, maxs, avgs, stds):
+      writer.writerow([key, i, mi, ma, a, s])
 #==============================================================================================================
   
 def setup_alg(options, alg_import):
@@ -301,7 +316,7 @@ def setup_alg(options, alg_import):
               else:
                 logbook = run_alg(vars(options), alg_import.Algorithm)
                 key = "k=" + str(k) + ", n=" + str(n)
-                log_dict[key] = logbook.get("min")
+                log_dict[key] = logbook
                 iterations = logbook.get('iterations')
               
           if options.is_threaded:
@@ -313,19 +328,28 @@ def setup_alg(options, alg_import):
                 print('%r generated an exception: %s' % (key, exc))
                 raise exc
               else:
-                log_dict[key] = logbook.get("min")
+                log_dict[key] = logbook
                 iterations = logbook.get('iterations')
         finally:
           if options.is_threaded:
             executor.close()
             executor.terminate()
             
-        plot_multi_data(iterations, log_dict)
+        if options.is_plot_exported:
+          plot_multi_data(iterations, log_dict, alg_import)
+          
+        if options.is_csv_exported:
+          save_csv_multi(iterations, log_dict, alg_import)
     else:
       logbook = run_alg(vars(options), alg_import.Algorithm)
       min_results = logbook.get("min")
       iterations = logbook.get('iterations')
-      plot_single_data(iterations, min_results, "k=" + str(options.k) + ", n=" + str(options.size))
+      
+      if options.is_plot_exported:
+        plot_single_data(iterations, min_results, "k=" + str(options.k) + ", n=" + str(options.size))
+        
+      if options.is_csv_exported:
+          save_csv_single(iterations, logbook, "k=" + str(options.k) + ", n=" + str(options.size), alg_import)
       
 def main():
   parser = build_parser()

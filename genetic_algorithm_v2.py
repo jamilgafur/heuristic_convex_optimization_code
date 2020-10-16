@@ -91,6 +91,10 @@ def get_params_gs():
   options = product(mu, sigma, alpha, indpb, tournsize, cxpb, mutpb)
   return options
 
+def to_string():
+  """Get the name of the algorithm to be put on output strings"""
+  return "ga"
+
 class Algorithm:
   def __init__(self, pool=None, problem=None, **args):
     
