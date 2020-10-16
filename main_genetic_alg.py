@@ -15,6 +15,8 @@ import numpy as np
 import multiprocessing
 import concurrent.futures
 
+from itertools import product
+
 from genetic_algorithm_v2 import OptimizationGA
 
 #For graphing
@@ -33,6 +35,12 @@ def print_progress_bar(iteration, total, best_fitness, decimals=3, length=100, f
   # Print New Line on Complete
   if iteration == total: 
     print()
+    
+
+def _thread_caller(pool, params):
+  ga = OptimizationGA(problem=1, pool=pool, debug=-1, pop_size=50, **params)
+  fitness, _ =  ga.run()
+  return fitness
 
 def grid_search(is_threaded, k, size, pool):
   """
@@ -52,49 +60,51 @@ def grid_search(is_threaded, k, size, pool):
 
   """
   
-  #Variables and progress bar code from:
-  #https://stackoverflow.com/a/34325723
-  total = 87500   #(5*7*5*5*4*5*5)
+  
+  mu = [1.0, 0.5, 0.0, -0.5, -1.0]
+  sigma = [0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005]
+  alpha = [0.1, 0.3, 0.5, 0.7, 0.9]
+  indpb = [0.1, 0.3, 0.5, 0.7, 0.9]
+  tournsize = [2, 3, 4, 5]
+  cxpb = [0.1, 0.3, 0.5, 0.7, 0.9]
+  mutpb = [0.1, 0.3, 0.5, 0.7, 0.9]
+  total = len(mu) * len(sigma) * len(alpha) * len(indpb) * len(tournsize) * len(cxpb) * len(mutpb)
   iteration = 0
+  options = product(mu, sigma, alpha, indpb, tournsize, cxpb, mutpb)
     
   best_values = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
   best_fitness = 90000000
   
   if is_threaded:
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
+    executor = multiprocessing.Pool(5)
     submitted = 1
     futures = dict()
   
   try:
-    for mu in [1.0, 0.5, 0.0, -0.5, -1.0]:                    #mu
-      for si in [0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005]: #sigma
-        for a in [0.1, 0.3, 0.5, 0.7, 0.9]:                   #alpha
-          for i in [0.1, 0.3, 0.5, 0.7, 0.9]:                 #indpb
-            for t in [2, 3, 4, 5]:                            #tournsize
-              for c in [0.1, 0.3, 0.5, 0.7, 0.9]:             #cxpb
-                for m in [0.1, 0.3, 0.5, 0.7, 0.9]:           #mutpb
-                  ga = OptimizationGA(problem=1, pool=pool, mu=mu, sigma=si, alpha=a, indpb=i, tournsize=t, cxpb=c, mutpb=m, debug=-1, size=size, k=k, pop_size=50)
-                  
-                  if is_threaded:
-                    futures[executor.submit(ga.run)] = (mu, si, a, i, t, c, m)
-                    print(f'\rSubmitted {submitted} / {total} jobs', end = '\r')
-                    submitted += 1
-                  else:
-                    fitness, _ = ga.run()
-                    fitness = fitness.fitness.values[0]
-                    
-                    if fitness <= best_fitness:
-                      best_fitness = fitness
-                      best_values = (mu, si, a, i, t, c, m)
-                      
-                    print_progress_bar(iteration, total, best_fitness)
-                    iteration += 1
+    if is_threaded:
+      for x in options:
+        params = {'size': size, 'k':k, 'mu':x[0], 'sigma':x[1], 'alpha':x[2], 'indpb':x[3], 'tournsize':x[4], 'cxpb':x[5], 'mutpb':x[6]}
+        futures[executor.apply_async(_thread_caller, (pool, params))] = x
+        print(f'\rSubmitted {submitted} / {total} jobs', end = '\r')
+        submitted += 1
+    else:
+      for params in options:
+        ga = OptimizationGA(problem=1, pool=pool, mu=params[0], sigma=params[1], alpha=params[2], indpb=params[3], tournsize=params[4], cxpb=params[5], mutpb=params[6], debug=-1, size=size, k=k, pop_size=50)
+        fitness, _ = ga.run()
+        fitness = fitness.fitness.values[0]
+        
+        if fitness <= best_fitness:
+          best_fitness = fitness
+          best_values = params
+          
+        print_progress_bar(iteration, total, best_fitness)
+        iteration += 1
                     
     if is_threaded:
-      for future in concurrent.futures.as_completed(futures):
+      for future in futures:
         parameters = futures[future]
         try:
-          fitness, _ = future.result()
+          fitness = future.get()
         except Exception as exc:
           print('%r generated an exception: %s' % (parameters, exc))
           raise exc
@@ -108,9 +118,8 @@ def grid_search(is_threaded, k, size, pool):
           iteration += 1
   finally:
     if is_threaded:
-      #executor.shutdown(wait=False)
-      executor._threads.clear()
-      concurrent.futures.thread._threads_queues.clear()
+      executor.close()
+      executor.terminate()
                 
               
   print("Best values from grid search evaluation is:\n\tMu:%.3f\n\tSigma:%.3f\n\tAlpha:%.3f\n\tIndpb:%.3f\n\tTournsize:%i\n\tCxpb:%.3f\n\tMutpb:%.3f"
@@ -263,7 +272,7 @@ def main():
           options.number_generations = steps
           log_dict = dict()
           if options.is_threaded:
-            executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
+            executor = concurrent.futures.ThreadPoolExecutor()
             futures = dict()
             
           try:
@@ -303,9 +312,9 @@ def main():
   finally:
     if options.is_distributed: 
       pool.close()
+      pool.terminate()
   
   
 
 if __name__ == '__main__':
-  with multiprocessing.Pool(5) as pool:
-    main()
+  main()

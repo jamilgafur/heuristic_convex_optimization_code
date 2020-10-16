@@ -104,19 +104,19 @@ class OptimizationGA:
       self.size = args.size
       
     if not hasattr(args, 'mu'):
-      args.mu = 0.0
+      args.mu = -1.0
       
     if not hasattr(args, 'sigma'):
-      args.sigma = 0.005
+      args.sigma = 0.001
       
     if not hasattr(args, 'alpha'):
-      args.alpha = 0.3
+      args.alpha = 0.9
       
     if not hasattr(args, 'indpb'):
-      args.indpb = 0.3
+      args.indpb = 0.9
       
     if not hasattr(args, 'tournsize'):
-      args.tournsize = 2
+      args.tournsize = 4
       
     if not hasattr(args, 'debug'):
       self.debug = 0
@@ -134,12 +134,12 @@ class OptimizationGA:
       self.num_gen = args.number_generations
       
     if not hasattr(args, 'cxpb'):
-      self.cxpb = 0.7
+      self.cxpb = 0.5
     else:
       self.cxpb = args.cxpb
       
     if not hasattr(args, 'mutpb'):
-      self.mutpb = 0.9
+      self.mutpb = 0.3
     else:
       self.mutpb = args.mutpb
       
