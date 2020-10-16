@@ -22,7 +22,11 @@ from convex_quadratic_opt import generate_input as cqo_gen_input
 numpy.seterr(all='warn')
 import warnings
 
+#To turn input dictionary into namespace for easier access
 from argparse import Namespace
+
+#To pair-zip hyperparameter options
+from itertools import product
 
 #=====================================================================================
 #tools: A set of functions to be called during genetic algorithm operations (mutate, mate, select, etc)
@@ -75,14 +79,26 @@ creator.create("Individual", list, fitness=creator.FitnessMin, generation=0)
 
 #toolbox = base.Toolbox()
 
-class OptimizationGA:
+def get_params_gs():
+  """Get hyperparameter pairs to run through grid search"""
+  mu = [1.0, 0.5, 0.0, -0.5, -1.0]
+  sigma = [0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005]
+  alpha = [0.1, 0.3, 0.5, 0.7, 0.9]
+  indpb = [0.1, 0.3, 0.5, 0.7, 0.9]
+  tournsize = [2, 3, 4, 5]
+  cxpb = [0.1, 0.3, 0.5, 0.7, 0.9]
+  mutpb = [0.1, 0.3, 0.5, 0.7, 0.9]
+  options = product(mu, sigma, alpha, indpb, tournsize, cxpb, mutpb)
+  return options
+
+class Algorithm:
   def __init__(self, pool=None, problem=None, **args):
     
     args = Namespace(**args)
     
     self.toolbox = base.Toolbox()
     
-    self.stats = tools.Statistics(key=self.stat_func)
+    self.stats = tools.Statistics(key=self._stat_func)
     self.stats.register("avg", numpy.mean)
     self.stats.register("std", numpy.std)
     self.stats.register("min", numpy.min)
@@ -146,7 +162,7 @@ class OptimizationGA:
     if problem == 1:
       if not hasattr(args, 'k'):
         raise ValueError("k must be given when problem 1 is being used")
-      self.init_quad_opt(args.k)
+      self._init_quad_opt(args.k)
     elif problem == 2:
       raise NotImplementedError("Problem 2 is not implemented yet")
     else:
@@ -162,14 +178,14 @@ class OptimizationGA:
     self.toolbox.register("mutate", tools.mutGaussian, mu=args.mu, sigma=args.sigma, indpb=args.indpb)
     self.toolbox.register("select", tools.selTournament, tournsize=args.tournsize)
     
-  def stat_func(self, ind):
+  def _stat_func(self, ind):
     return ind.fitness.values[0]
     
   #Fitness evaluation methods (must return iterable)
   #Remember, we want to minimize these functions, so to hurt them we need to return
   #large positive numbers.
   #=====================================================================================
-  def evaluatate_quad_opt(self, individual):
+  def _evaluatate_quad_opt(self, individual):
     x = np.array([individual]).T  #x as Column vector
     
     #Have a very large fitness be returned if any value in x is nan (what we do not want)
@@ -209,14 +225,14 @@ class OptimizationGA:
   
   #Initialization methods
   #=====================================================================================
-  def init_quad_opt(self, k):
+  def _init_quad_opt(self, k):
     A, b = cqo_gen_input(k, self.size, self.debug)
     if self.size < 20 and self.debug >= 0:
       print("Exact minimizer for problem is: %r" % (np.asarray(np.matmul(np.linalg.inv(A), b))))
       
     self.A = A
     self.b = b
-    self.evaluate_fitness = self.evaluatate_quad_opt
+    self.evaluate_fitness = self._evaluatate_quad_opt
   #=====================================================================================
   
   def run(self):
@@ -231,7 +247,12 @@ class OptimizationGA:
   
     Returns
     -------
-    Best individual out of all generations, logbook with statiistics on each generation.
+    best_individual: List
+      The best individual found out of all iterations
+    fitness: Float
+      The best_individual's fitness value
+    logbook : Dictionary
+      A dictionary of arrays for iterations, min, max, average, and std. dev. for each iteration.
   
     """
     pop = self.toolbox.population(n=self.pop_size)
@@ -293,7 +314,8 @@ class OptimizationGA:
       print("\tBest individual seen fitness value:\t\t%.3f" % (hof[0].fitness.values[0]))
       print("\tBest individual seen generation appeared in:\t%i" % (hof[0].generation))
       
-    return hof[0], logbook
+    gen, min_results, max_results, avg, std = logbook.select("gen", "min", "max", "avg", "std")
+    return hof[0], hof[0].fitness.values[0], {"iterations": gen, "min": min_results, "max": max_results, "avg": avg, "std": std}
   
   def __getstate__(self):
         self_dict = self.__dict__.copy()
