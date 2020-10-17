@@ -13,6 +13,7 @@ import numpy as np
 
 #For parallel computing
 import multiprocessing
+import signal
 
 #Imports for the algorithms
 import genetic_algorithm_v2 as ga
@@ -80,7 +81,9 @@ def grid_search(is_threaded, k, size, alg_import):
   best_fitness = 90000000
   
   if is_threaded:
-    executor = multiprocessing.Pool(5)
+    original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+    executor = multiprocessing.Pool(8)
+    signal.signal(signal.SIGINT, original_sigint_handler)
     submitted = 1
     futures = dict()
   
@@ -106,22 +109,22 @@ def grid_search(is_threaded, k, size, alg_import):
     if is_threaded:
       for future in futures:
         parameters = futures[future]
-        try:
-          fitness = future.get()
-        except Exception as exc:
-          print('%r generated an exception: %s' % (parameters, exc))
-          raise exc
-        else:
-          if fitness <= best_fitness:
-            best_fitness = fitness
-            best_values = parameters
+        fitness = future.get()
+        if fitness <= best_fitness:
+          best_fitness = fitness
+          best_values = parameters
             
           print_progress_bar(iteration, total, suffix=("Complete--Best fitness: {0:.3f}").format(best_fitness))
           iteration += 1
-  finally:
+  except KeyboardInterrupt:
+    if is_threaded:
+      executor.terminate()
+  else:
     if is_threaded:
       executor.close()
-      executor.terminate()
+    
+  if is_threaded:
+    executor.join()
                 
               
   print("Best values from grid search evaluation is:\n\tMu:%.3f\n\tSigma:%.3f\n\tAlpha:%.3f\n\tIndpb:%.3f\n\tTournsize:%i\n\tCxpb:%.3f\n\tMutpb:%.3f"
@@ -141,15 +144,15 @@ def build_parser():
                       help='Number of individuals in the population', 
                       metavar='P')
   
-  parser.add_argument('-a', '--alpha', dest='alpha', type=float, default=0.3,
+  parser.add_argument('-a', '--alpha', dest='alpha', type=float, default=0.9,
                       help='Alpha used for blending individuals when mating', 
                       metavar='A')
   
-  parser.add_argument('-t', '--tournament-size', dest='tournsize', type=int, default=2,
+  parser.add_argument('-t', '--tournament-size', dest='tournsize', type=int, default=4,
                       help='The number of individuals per tournament during selection', 
                       metavar='T')
   
-  parser.add_argument('-i', '--indpb', dest='indpb', type=float, default=0.3,
+  parser.add_argument('-i', '--indpb', dest='indpb', type=float, default=0.9,
                       help='Probability that a gene will be mutated in a mutating individual', 
                       metavar='I')
   
@@ -157,11 +160,11 @@ def build_parser():
                       help='Number of generations to run through in algorithm', 
                       metavar='G')
   
-  parser.add_argument('-c', '--cxpb', dest='cxpb', type=float, default=0.7,
+  parser.add_argument('-c', '--cxpb', dest='cxpb', type=float, default=0.5,
                       help='Percentage chance that 2 individuals will be mated', 
                       metavar='C')
   
-  parser.add_argument('-m', '--mutpb', dest='mutpb', type=float, default=0.9,
+  parser.add_argument('-m', '--mutpb', dest='mutpb', type=float, default=0.5,
                       help='Percentage chance that an individual will be mutated', 
                       metavar='M')
   
@@ -316,7 +319,6 @@ def setup_alg(options, alg_import):
         try:
           for k in [3, 10, 30, 100, 300, 1000]:
             for n in [2, 5, 10, 20, 50, 100]:
-              #print("Running for k =  %i, n = %i, steps = %i" % (k, n, steps))
               options.k = k
               options.size = n
               
