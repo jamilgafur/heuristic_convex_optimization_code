@@ -4,23 +4,13 @@ from convex_quadratic_opt import generate_input as gi
 
 def to_string():
     return "GSA"
-
-A , b = None, None
-
-# optimization function    
-def evalutate_quad_opt(individual):
-    global A
-    global b
-    x = np.array(individual, dtype=float)
-    value = 0.5 * np.matmul(np.matmul(x.T, A), x) - np.matmul(b.T, x)
-    return 1/value
-
-       
+   
 class Algorithm:
+    
     def __init__(self, **args):
-        global A
-        global b
-        A, b = gi(args["k"], args["size"], args["debug"])
+        self.A = None
+        self.b = None
+        self.A, self.b = gi(args["k"], args["size"], args["debug"])
         
         self.alpha = 0.1
         self.G = 0.9
@@ -29,9 +19,9 @@ class Algorithm:
         self.dimension = args["size"]
         
         if args["problems"] == 1:
-          self.cost_func = evalutate_quad_opt
+          self.cost_func = self.evalutate_quad_opt
         else:
-          self.cost_func = evalutate_quad_opt
+          self.cost_func = self.evalutate_quad_opt
          
         self.best_so_far = None
         self.worse_so_far = None
@@ -43,6 +33,12 @@ class Algorithm:
         self.q = np.full((self.pop_size, 1), None)
         self.M = np.full((self.pop_size, 1), None)
         self.cost_matrix = np.full((self.pop_size, 1), None)
+
+    # optimization function 1
+    def evalutate_quad_opt(self, individual):
+        x = np.array(individual, dtype=float)
+        value = 0.5 * np.matmul(np.matmul(x.T, self.A), x) - np.matmul(self.b.T, x)
+        return 1/value
 
     # Evaluate a single x (x_i)
     def evaluate(self, args):
