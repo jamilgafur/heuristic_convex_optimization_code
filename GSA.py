@@ -1,26 +1,44 @@
 
 import numpy as np
+from convex_quadratic_opt import generate_input as gi
 
-class GSA:
-    def __init__(self, pop_size=1, dimension=1, max_iter=100):
-        self.cost_func = None
-
+def to_string():
+    return "GSA"
+   
+class Algorithm:
+    
+    def __init__(self, **args):
+        self.A = None
+        self.b = None
+        self.A, self.b = gi(args["k"], args["size"], args["debug"])
+        
         self.alpha = 0.1
         self.G = 0.9
-        self.max_iter = max_iter
-        self.pop_size = pop_size
-        self.dimension = dimension
-        self.best_so_far = None
-
-        self.write_out = ""
+        self.max_iter  = args["number_generations"]
+        self.pop_size  = args["pop_size"]
+        self.dimension = args["size"]
         
-        self.X = np.random.rand(pop_size, dimension)
-        self.V = np.random.rand(pop_size, dimension)
-        self.f = np.full((pop_size, dimension), None)  # None  # Will become a list inside cal_f
-        self.a = np.full((pop_size, dimension), None)
-        self.q = np.full((pop_size, 1), None)
-        self.M = np.full((pop_size, 1), None)
-        self.cost_matrix = np.full((pop_size, 1), None)
+        if args["problems"] == 1:
+          self.cost_func = self.evalutate_quad_opt
+        else:
+          self.cost_func = self.evalutate_quad_opt
+         
+        self.best_so_far = None
+        self.worse_so_far = None
+        self.write_out = ""
+        self.X = np.random.rand(self.pop_size, self.dimension)
+        self.V = np.random.rand(self.pop_size, self.dimension)
+        self.f = np.full((self.pop_size, self.dimension), None)  # None  # Will become a list inside cal_f
+        self.a = np.full((self.pop_size, self.dimension), None)
+        self.q = np.full((self.pop_size, 1), None)
+        self.M = np.full((self.pop_size, 1), None)
+        self.cost_matrix = np.full((self.pop_size, 1), None)
+
+    # optimization function 1
+    def evalutate_quad_opt(self, individual):
+        x = np.array(individual, dtype=float)
+        value = 0.5 * np.matmul(np.matmul(x.T, self.A), x) - np.matmul(self.b.T, x)
+        return 1/value
 
     # Evaluate a single x (x_i)
     def evaluate(self, args):
@@ -28,8 +46,10 @@ class GSA:
 
     # Generate the cost of all particles
     def gen_cost_matrix(self):
+        #print("x: {}".format(self.X))
         for i, x in enumerate(self.X):
             self.cost_matrix[i] = self.evaluate(x)
+        #print("cost matrix: {}".format(self.cost_matrix))
 
     def cal_q(self):
 
@@ -76,17 +96,28 @@ class GSA:
     def show_results(self):
         print('Best seen so far is located at:', self.best_so_far, 'Cost:', self.evaluate(self.best_so_far))
 
+
+    # set for minimization
     def update_best_so_far(self):
         best = np.min(self.cost_matrix)
         index = int(np.where(self.cost_matrix == best)[0])
         if self.best_so_far is None or self.evaluate(self.best_so_far) > self.evaluate(self.X[index]):
             self.best_so_far = self.X[index]
             print("new best: {}".format(self.evaluate(self.best_so_far)))
+            
+        
+        worse = np.max(self.cost_matrix)
+        index = int(np.where(self.cost_matrix == worse)[0])
+        self.worse_so_far = self.X[index]
+        print("new worse: {}".format(self.evaluate(self.worse_so_far)))
 
-    def start(self):
+    def run(self):
         _iter = 0
         avg = []
-        bsf = []
+        min_results = [] # bsf
+        max_results = []# wsf
+        avg = []#ave
+        std = []#[...]
         while _iter < self.max_iter:
             self.gen_cost_matrix()
             self.cal_q()
@@ -100,9 +131,17 @@ class GSA:
 
             iterave = sum(self.cost_matrix) / len(self.cost_matrix)
             avg.append(iterave)         
-            bsf.append(self.evaluate(self.best_so_far))
-            self.write_out += "avg: {} |itr: {} |bsf: {}\n".format(iterave, _iter, bsf[-1]) 
-            print("avg: {} |itr: {} |bsf: {}".format(iterave, _iter, bsf[-1]) )
+            
+            min_results.append(self.evaluate(self.best_so_far))
+            max_results.append(self.evaluate(self.worse_so_far))
+            std.append(np.std(min_results))
+            
+            self.write_out += "itr: {} |avgcost: {} |bsf: {}|wsf: {}\n".format(iterave, _iter, min_results[-1], max_results[-1]) 
+            
+            
+            print("itr: {} |avgcost: {} |bsf: {}".format(iterave, _iter, min_results[-1]) )
             _iter += 1
+        
+        output_dictionary = {"iterations": [i for i in range(1, self.max_iter+1)], "avg": avg, "min": min_results, "max": max_results, "std": std}
+        return self.best_so_far, self.evaluate(self.best_so_far), output_dictionary
 
-        return self.write_out
