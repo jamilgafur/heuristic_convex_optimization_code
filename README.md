@@ -52,12 +52,12 @@ class Algorithm:
     else:
       self.size = args.size
       
-      #Set algorithm parameters to self object here...
-      #Here is an example
-      if not hasattr(args, 'parameter_1'):
-        self.parameter_1 = 10
-      else:
-        self.parameter_1 = args.parameter_1
+    #Set algorithm parameters to self object here...
+    #Here is an example
+    if not hasattr(args, 'parameter_1'):
+      self.parameter_1 = 10
+    else:
+      self.parameter_1 = args.parameter_1
       
     if not hasattr(args, 'debug'):
       self.debug = 0
@@ -114,12 +114,12 @@ class Algorithm:
     return best_individual, best_individual_cost, output_dictionary
   
   def __getstate__(self):
-        self_dict = self.__dict__.copy()
-        del self_dict['map_func']
-        return self_dict
+    self_dict = self.__dict__.copy()
+    del self_dict['map_func']
+    return self_dict
 
   def __setstate__(self, state):
-      self.__dict__.update(state)
+    self.__dict__.update(state)
 ```
 
 Now, to import new algorithms into ```main.py```, use the following snippet as a guide:
@@ -157,4 +157,4 @@ def main():
     setup_alg(options, alg)
 ```
 
-The biggest things to note are the importing of the algorithm module and adding the module to the algorithms array in the main method.
+The biggest things to note are the importing of the algorithm module and adding the module to the algorithms array in the main method. Say we named the algorithm file ```algorithm.py```, and so that is what we want to import.
