@@ -100,6 +100,8 @@ class Algorithm:
     def show_results(self):
         print('Best seen so far is located at:', self.best_so_far, 'Cost:', self.evaluate(self.best_so_far))
 
+
+    # set for minimization
     def update_best_so_far(self):
         best = np.min(self.cost_matrix)
         index = int(np.where(self.cost_matrix == best)[0])
@@ -107,10 +109,11 @@ class Algorithm:
             self.best_so_far = self.X[index]
             print("new best: {}".format(self.evaluate(self.best_so_far)))
             
-            
-        if self.worse_so_far is None or self.evaluate(self.worse_so_far) < self.evaluate(self.X[index]):
-            self.worse_so_far = self.X[index]
-            print("new worse: {}".format(self.evaluate(self.worse_so_far)))
+        
+        worse = np.max(self.cost_matrix)
+        index = int(np.where(self.cost_matrix == worse)[0])
+        self.worse_so_far = self.X[index]
+        print("new worse: {}".format(self.evaluate(self.worse_so_far)))
 
     def run(self):
         _iter = 0
