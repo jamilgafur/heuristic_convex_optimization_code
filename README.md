@@ -38,14 +38,9 @@ def to_string():
   return "alg_name"
 
 class Algorithm:
-  def __init__(self, pool=None, problem=None, **args):
+  def __init__(self, problem=None, **args):
     
     args = Namespace(**args)
-    
-    if not pool:
-      self.map_func = map
-    else:
-      self.map_func = pool.map
     
     if not hasattr(args, 'size'):
       self.size = 10
@@ -112,14 +107,6 @@ class Algorithm:
     std = #[...]
     output_dictionary = {"iterations": iterations, "min": min_results, "max": max_results, "avg": avg, "std": std}
     return best_individual, best_individual_cost, output_dictionary
-  
-  def __getstate__(self):
-    self_dict = self.__dict__.copy()
-    del self_dict['map_func']
-    return self_dict
-
-  def __setstate__(self, state):
-    self.__dict__.update(state)
 ```
 
 Now, to import new algorithms into ```main.py```, use the following snippet as a guide:
