@@ -17,6 +17,7 @@ import signal
 
 #Imports for the algorithms
 import genetic_algorithm_v2 as ga
+import GSA as GSA
 
 #For graphing
 import matplotlib.pyplot as plt
@@ -367,15 +368,42 @@ def setup_alg(options, alg_import):
           save_csv_single(iterations, logbook, "k=" + str(options.k) + ", n=" + str(options.size), alg_import)
       
 def main():
+  # build the parser for implementation
+  # Default parser values:
   parser = build_parser()
+  
+  # get options such as???
+  # Default Options:
+  """
+      alpha=0.9 
+      cxpb=0.5 
+      debug=-1
+      indpb=0.9
+      is_csv_exported=False
+      is_plot_exported=False
+      is_threaded=False
+      k=3
+      mu=0
+      mutpb=0.5
+      number_generations=1000
+      perform_grid_search=False
+      pop_size=300, 
+      problems=2, 
+      seed=1234, 
+      sigma=0.005, 
+      size=5, 
+      tournsize=4, 
+      use_pred_inputs=False 
+  """
   options = parser.parse_args()
+  #
   random.seed(options.seed)
   np.random.seed(options.seed)
   
   #Add imported algorithm modules to this list to have them be used.
-  for alg in [ga]:
+  for alg in [ga, GSA]:
     setup_alg(options, alg)
-  
+    
 
 if __name__ == '__main__':
   main()
