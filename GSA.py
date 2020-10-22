@@ -24,8 +24,8 @@ class Algorithm:
         
         self.alpha = 0.1
         self.G = 0.9
-        self.max_iter  =10 # args["number_generations"]
-        self.pop_size  = 3#args["pop_size"]
+        self.max_iter  = args["number_generations"]
+        self.pop_size  = args["pop_size"]
         self.dimension = args["size"]
         
         if args["problems"] == 1:
