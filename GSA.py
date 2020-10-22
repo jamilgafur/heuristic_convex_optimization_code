@@ -22,7 +22,10 @@ class Algorithm:
           self.cost_func = self.evalutate_quad_opt
         else:
           self.cost_func = self.evalutate_quad_opt
-         
+        
+        self.converged = False
+        self.converged_counter = 30
+        self.converged_rate = .00001
         self.best_so_far = None
         self.worse_so_far = None
         self.write_out = ""
@@ -136,10 +139,18 @@ class Algorithm:
             max_results.append(self.evaluate(self.worse_so_far))
             std.append(np.std(min_results))
             
-            self.write_out += "itr: {} |avgcost: {} |bsf: {}|wsf: {}\n".format(iterave, _iter, min_results[-1], max_results[-1]) 
+            if( len(min_results) > 3):
+             if(min_results[-2] - min_results[-1] < self.converged_rate):
+                self.converged_counter = self.converged_counter -1
+                print("\t converged check: {} ".format(self.converged_counter))
+             else:
+                 self.converged_counter = 30
+                 
+            if(self.converged_counter == 0):
+                break
             
             
-            print("itr: {} |avgcost: {} |bsf: {}".format(iterave, _iter, min_results[-1]) )
+            print("itr: {}/{} |avgcost: {} |bsf: {}".format( _iter, self.max_iter, iterave, min_results[-1]) )
             _iter += 1
         
         output_dictionary = {"iterations": [i for i in range(1, self.max_iter+1)], "avg": avg, "min": min_results, "max": max_results, "std": std}
