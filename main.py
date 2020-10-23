@@ -272,7 +272,8 @@ def plot_single_data(iterations, data, key, alg_import):
   plt.savefig(alg_import.to_string() + '__single_' + str(len(iterations)) + '.svg', bbox_extra_artists=(legend,), bbox_inches='tight')
   
 def save_csv_multi(iterations, output_dict, alg_import):
-  with open("csvs\\" + alg_import.to_string() + "_" + str(len(iterations)) + "_all.csv", 'w', newline='\n', encoding='utf-8') as csv_file:
+  with open(r'csvs/' + alg_import.to_string() + "_" + str(len(iterations))
+          + "_all.csv", 'w+', newline='\n', encoding='utf-8') as csv_file:
     writer = csv.writer(csv_file)
     writer.writerow(["Key", "Iteration", "Min", "Max", "Average", "Std. Dev."])
     for key, (_, mins, maxs, avgs, stds) in output_dict.items():
@@ -280,7 +281,8 @@ def save_csv_multi(iterations, output_dict, alg_import):
         writer.writerow([key, i, mi, ma, a, s])
   
 def save_csv_single(iterations, output_dict, key, alg_import):
-  with open("csvs\\" + alg_import.to_string() + "_" + str(len(iterations)) + "_single.csv", 'w', newline='\n', encoding='utf-8') as csv_file:
+  with open(r'csvs/' + alg_import.to_string() + "_" + str(len(iterations))
+          + "_single.csv", 'w+', newline='\n', encoding='utf-8') as csv_file:
     writer = csv.writer(csv_file)
     writer.writerow(["Key", "Iteration", "Min", "Max", "Average", "Std. Dev."])
     _, mins, maxs, avgs, stds = output_dict.values()
