@@ -1,7 +1,10 @@
 import random
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 import numpy as np
 from convex_quadratic_opt import generate_input as gi
 np.set_printoptions(linewidth=np.inf)
+
 def to_string():
     return "GSA"
    
@@ -13,8 +16,9 @@ class Algorithm:
         self.A, self.b = gi(args["k"], args["size"], args["debug"])
         self.debug = args["debug"] != -1
 
-        self.alpha = args["alpha"]
-        self.G = 100# random.uniform(0, 100) 
+        print(self.A)
+        print(self.b)
+        self.G =  None
         self.max_iter  = args["number_generations"]
         self.pop_size  = args["pop_size"]
         self.dimension = args["size"]
@@ -23,21 +27,24 @@ class Algorithm:
           self.cost_func = self.evalutate_quad_opt
         else:
           self.cost_func = self.evalutate_quad_opt
-        
+       
         self._current_iter = 0
         self.best_so_far_iteration = None
         self.best_so_far = None
         self.worse_so_far = None
-        self.write_out = ""
         
-        self.locations = np.array([[ random.uniform(0, 100) for i in range(self.dimension) ] for i in range(self.pop_size)])
         
-        #np.random.rand(self.pop_size, self.dimension)
-
-        #np.array([[ np.random.randint(100) for i in range(0,self.dimension) ] for i in range(0, self.pop_size)])
+        self.fig = plt.figure()
+        self.ax = plt.axes()
+        self.arrows = []
+        self.line, = self.ax.plot([], [], 'o', color='black')
+        self.history_loc = []
+        self.locations = np.array([[ random.randint(-30, 30) for i in range(self.dimension) ] for i in range(self.pop_size)])        
+        self.history_loc.append(self.locations)
+        self.history_V = []        
         
-
         self.V = np.random.rand(self.pop_size, self.dimension)
+        self.history_V.append(self.V)
         self.f = np.full((self.pop_size, self.dimension), None)  # None  # Will become a list inside cal_f
         self.accel = np.full((self.pop_size, self.dimension), None)
         self.inertia = np.full((self.pop_size, 1), None)
@@ -47,11 +54,9 @@ class Algorithm:
     # optimization function 1
     def evalutate_quad_opt(self, individual):
         x = np.array(individual, dtype=float)
-        #value = 0.5 * np.matmul(np.matmul(x.T, self.A), x) - np.matmul(self.b.T, x)
-        value = np.linalg.norm(np.matmul(self.A, x) - self.b, 2)
+        value = 0.5 * np.matmul(np.matmul(x.T, self.A), x) - np.matmul(self.b.T, x)
         return value
 
-    
     # Evaluate a single x (x_i)
     def evaluate(self, args):
         return self.cost_func(args) 
@@ -70,7 +75,7 @@ class Algorithm:
         best = np.min(self.cost_matrix)
         worst = np.max(self.cost_matrix)
         self.inertia = (self.cost_matrix - worst) / best - worst
-        if self.debug :
+        if self.debug:
             print("\tine: \n{}".format(self.inertia))
         self.cal_mass()
             
@@ -81,15 +86,17 @@ class Algorithm:
         self.update_grav()
 
 
+    def update_grav(self):
+        self.G = 10 *  np.exp(-1 * (self._current_iter / self.max_iter) )
+        self.cal_force()
+        
     def cal_force(self):
         costs = self.cost_matrix.copy()
         costs.sort(axis=0)
         
         for i in range(self.pop_size):
             f = None
-            for cost in costs:
-                j = int(np.where(self.cost_matrix == cost)[0])
-
+            for j in range(costs.size):
                 dividend = float(self.mass_matrix[i] * self.mass_matrix[j])
                 divisor = np.sqrt(np.sum((self.locations[i] - self.locations[j]) ** 2)) + np.finfo('float32').eps
                 if f is None:
@@ -97,7 +104,7 @@ class Algorithm:
                 else:
                     f = f + self.G * (dividend / divisor) * (self.locations[j] - self.locations[i])
 
-            self.f[i] = f 
+            self.f[i] = f * np.random.uniform(0,1)
             
         if self.debug :
             print("\tfce: \n{}".format(self.f))
@@ -111,13 +118,11 @@ class Algorithm:
 
     def cal_vel(self):
         self.V = (np.random.uniform(0, 1) * self.V) + self.accel
+        self.history_V.append(self.V)
         if self.debug :
             print("\tvel: \n{}".format(self.V))
         self.update_locations()
         
-    def update_grav(self):
-        self.G = self.G *  (1 - (self._current_iter / self.max_iter) )
-        self.cal_force()
         
     def update_locations(self):
         self.locations = self.locations + self.V
@@ -127,38 +132,30 @@ class Algorithm:
 
     # set for minimization
     def update_best_so_far(self):
+        
         best = np.min(self.cost_matrix)
-        index = int(np.where(self.cost_matrix == best)[0])
-        
-        if self._current_iter > 1:
-        
-            if self.debug :
-                print("checking: {} @ {}".format(self.locations[index], self.evaluate(self.locations[index])))
-                print("with: {} @ {}".format(self.best_so_far, self.evaluate(self.best_so_far)))
-            
-        
+        index = np.where(self.cost_matrix == best)[0][0]
         if self.best_so_far is None:
             self.best_so_far = self.locations[index]
             self.best_so_far_iteration = self._current_iter
             if self.debug :
                 print("new best: {} @ {}".format(self.best_so_far, self.evaluate(self.best_so_far)))
-            
+        
         if self.evaluate(self.best_so_far) > self.evaluate(self.locations[index]):
-            if self.debug :
-                print("------: {} > {}".format(self.evaluate(self.best_so_far), self.evaluate(self.locations[index])))
             self.best_so_far_iteration = self._current_iter
             self.best_so_far = self.locations[index]
             if self.debug :
+                print("------: {} > {}".format(self.evaluate(self.best_so_far), self.evaluate(self.locations[index])))
                 print("new best: {} @ {}".format(self.best_so_far, self.evaluate(self.best_so_far)))
             
-        
+            
         worse = np.max(self.cost_matrix)
-        index = int(np.where(self.cost_matrix == worse)[0])
+        index = np.where(self.cost_matrix == worse)[0][0]
         if self.worse_so_far is None :
             self.worse_so_far = self.locations[index]
             if self.debug :
                 print("new worse: {} @ {}".format(self.worse_so_far, self.evaluate(self.worse_so_far)))
-
+         
         if self.evaluate(self.worse_so_far) < self.evaluate(self.locations[index]):
             if self.debug :
                 print("------: {} < {}".format(self.evaluate(self.worse_so_far), self.evaluate(self.locations[index])))
@@ -166,38 +163,80 @@ class Algorithm:
             if self.debug :
                 print("new worse: {} @ {}".format(self.worse_so_far, self.evaluate(self.worse_so_far)))
 
+
+    def init_animation(self):
+        self.line.set_data([],[])
+        return self.line, 
+
+    def animate(self, time):
+        print(time)
+        x = []
+        y =[]
+        for i in self.history_loc[time]:
+            x.append(i[0])
+            y.append(i[1])
         
-            
+        
+        #if len(self.arrows) > 2:
+        #    for i in self.arrows:
+        #        i.remove()
+        #self.arrows = []
+        #dx = []
+        #dy =[]
+        #for i in self.history_V[time]:
+        #    dx.append(i[0])
+        #    dy.append(i[1])
+        #for x0,y0,dx0,dy0 in zip(x,y,dx,dy):
+        #    new_arrow = self.ax.arrow(x0,y0,dx0,dy0, head_width= .5, head_length=.5)
+        #   self.arrows.append(new_arrow)
+        #self.arrows.append(self.ax.plot(self.best_so_far[0], self.best_so_far[1], 'x', 'red'))
+        
+        self.line.set_data(x,y)
+        
+        return self.line, 
+           
     def run(self):
         
         avg = []
-        min_results = [] # bsf
-        max_results = []# wsf
-        avg = []#ave
-        std = []#[...]
+        min_results = [] 
+        max_results = []
+        avg = []
+        std = []        
         while self._current_iter <= self.max_iter:
             self.gen_cost_matrix()
+            self.history_loc.append(self.locations)
+            self.history_V.append(self.V)
             
+        
             iterave = sum(self.cost_matrix) / len(self.cost_matrix)
             
-            avg.append(iterave)         
+            avg.append(iterave[0])         
             
-            iteration_best = int(np.where(self.cost_matrix == np.min(self.cost_matrix))[0])
-            iteration_worse = int(np.where(self.cost_matrix == np.max(self.cost_matrix))[0])
-            
-            min_results.append(self.locations[iteration_best])
-            max_results.append(self.locations[iteration_worse])
+            min_results.append(min(self.cost_matrix.flatten()))
+            max_results.append(max(self.cost_matrix.flatten()))
             std.append(np.std(min_results))
-            
+                       
+
             self._current_iter += 1
             
-            if self.debug:
-                print("{} ---bsf: {} | cost: {}".format(self._current_iter -1 , self.best_so_far, self.evaluate(self.best_so_far )))
-                print("===="*20)
+            print("{} ---bsf: {} | cost: {}".format(self._current_iter -1 , self.best_so_far, self.evaluate(self.best_so_far)))
+            print("===="*20)
+
+        self.history_loc.append(self.locations)
+        self.history_V.append(self.V)
+        self.ax.axis([-20,20,-20,20])
+        anim = FuncAnimation(self.fig, self.animate, init_func=self.init_animation, frames=self._current_iter+2, interval=500, blit=True)
+        x, y = np.meshgrid(np.linspace(-20, 20, 500),np.linspace(-20, 20, 500))
         
-        print("\tBest individual seen fitness value: {:0.3f}".format(self.evaluate(self.best_so_far )))
+        
+        for i,j in zip(x,y) :        
+             plt.contourf(x, y, self.evaluate([i,j]))
+             
+        plt.colorbar()
+        anim.save('animate.gif', writer='imagemagick')
+        print("\tBest individual seen fitness value: {}".format(self.evaluate(self.best_so_far )))
         print("\tBest individual seen generation apperared in: {}".format(self.best_so_far_iteration ))
 
-        output_dictionary = {"iterations": [i for i in range(1, self.max_iter+1)], "avg": avg, "min": min_results, "max": max_results, "std": std}
+        output_dictionary = {"iterations": [i for i in range(self.max_iter)], "avg": avg, "min": min_results, "max": max_results, "std": std}
         return self.best_so_far, self.evaluate(self.best_so_far), output_dictionary
 
