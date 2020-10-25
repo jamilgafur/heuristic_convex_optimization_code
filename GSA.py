@@ -3,6 +3,11 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import numpy as np
 from convex_quadratic_opt import generate_input as gi
+import matplotlib.pyplot as plt
+import numpy as np
+from convex_quadratic_opt import generate_input as cqo_gen_input
+import matplotlib.tri as tri
+
 np.set_printoptions(linewidth=np.inf)
 
 def to_string():
@@ -37,7 +42,7 @@ class Algorithm:
         self.arrows = []
         self.line, = self.ax.plot([], [], 'o', color='black')
         self.history_loc = []
-        self.locations = np.array([[ random.randint(-30, 30) for i in range(self.dimension) ] for i in range(self.pop_size)])        
+        self.locations = np.array([[ random.randint(-10, 10) for i in range(self.dimension) ] for i in range(self.pop_size)])        
         self.history_loc.append(self.locations)
         self.history_V = []        
         
@@ -48,6 +53,7 @@ class Algorithm:
         self.inertia = np.full((self.pop_size, 1), None)
         self.mass_matrix = np.full((self.pop_size, 1), None)
         self.cost_matrix = np.full((self.pop_size, 1), None)
+        
         
     # optimization function 1
     def evalutate_quad_opt(self, individual):
@@ -222,21 +228,34 @@ class Algorithm:
 
         self.history_loc.append(self.locations)
         self.history_V.append(self.V)
-        if self.debug >=2 and len(self.A) == 2: 
-            self.ax.axis([-20,20,-20,20])
-            anim = FuncAnimation(self.fig, self.animate, init_func=self.init_animation, frames=self._current_iter+2, interval=500, blit=True)
-            x, y = np.meshgrid(np.linspace(-20, 20, 500),np.linspace(-20, 20, 500))
-            
-            
-            for i,j in zip(x,y) :        
-                 plt.contourf(x, y, self.evaluate([i,j]))
-                 
-            plt.colorbar()
-            anim.save('animate.gif', writer='imagemagick')
+        self.ax.axis([-20,20,-20,20])
+        anim = FuncAnimation(self.fig, self.animate, init_func=self.init_animation, frames=self._current_iter+2, interval=500, blit=True)
+        
+        npts = 2000
+        x = np.random.uniform(-20, 20, npts)
+        y = np.random.uniform(-20, 20, npts)
+        z = []
+        for r, c in zip(x, y):
+            z.append(self.evaluate([r, c]).item(0))
+           
+        triang = tri.Triangulation(x, y)
+        interpolator = tri.LinearTriInterpolator(triang, z)
+        
+        ngridx = 1000
+        ngridy = 2000
+        xi = np.linspace(-20.1, 20.1, ngridx)
+        yi = np.linspace(-20.1, 20.1, ngridy)
+        
+        Xi, Yi = np.meshgrid(xi, yi)
+        zi = interpolator(Xi, Yi)
+        
+        plt.contourf(Xi, Yi, zi, 20, cmap='RdGy')
+        plt.colorbar()
+        anim.save('animate.gif', writer='imagemagick')
         print("\tBest individual seen fitness value: {}".format(self.evaluate(self.best_so_far )))
         print("\tBest individual seen location: {}".format(self.best_so_far ))
         print("\tBest individual seen generation apperared in: {}".format(self.best_so_far_iteration ))
-
+        print("Exact minimizer for problem is: %r" % (np.asarray(np.matmul(np.linalg.inv(self.A), self.b))))
         output_dictionary = {"iterations": [i for i in range(self.max_iter)], "avg": avg, "min": min_results, "max": max_results, "std": std}
         return self.best_so_far, self.evaluate(self.best_so_far), output_dictionary
 
