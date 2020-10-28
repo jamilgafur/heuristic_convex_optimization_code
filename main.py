@@ -371,7 +371,7 @@ def setup_alg(options, alg_import):
         plot_single_data(iterations, min_results, "k=" + str(options.k) + ", n=" + str(options.size))
         
       if options.is_csv_exported:
-          save_csv_single(iterations, logbook, "k=" + str(options.k) + ", n=" + str(options.size)+ ", seed="+str(option.seed), alg_import)
+          save_csv_single(iterations, logbook, "k=" + str(options.k) + ", n=" + str(options.size)+ ", seed="+str(options.seed), alg_import)
       
 def main():
   # build the parser for implementation
