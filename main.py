@@ -272,7 +272,7 @@ def plot_single_data(iterations, data, key, alg_import):
   plt.savefig(alg_import.to_string() + '__single_' + str(len(iterations)) + '.svg', bbox_extra_artists=(legend,), bbox_inches='tight')
   
 def save_csv_multi(iterations, output_dict, alg_import, seed):
-  with open(r'csvs/' + alg_import.to_string() + "_iterations" + str(len(iterations)) + "_seed_"+seed+"_"
+  with open(r'csvs/' + alg_import.to_string() + "_iterations_" + str(len(iterations)) + "_seed_"+seed+"_"
             + "_all.csv", 'w+', newline='\n', encoding='utf-8') as csv_file:
     writer = csv.writer(csv_file)
     writer.writerow(["Key", "Iteration", "Min", "Max", "Average", "Std. Dev."])
