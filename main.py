@@ -272,7 +272,7 @@ def plot_single_data(iterations, data, key, alg_import):
   plt.savefig(alg_import.to_string() + '__single_' + str(len(iterations)) + '.svg', bbox_extra_artists=(legend,), bbox_inches='tight')
   
 def save_csv_multi(iterations, output_dict, alg_import):
-    with open(r'csvs/' + alg_import.to_string() + "_" + str(len(iterations))
+  with open(r'csvs/' + alg_import.to_string() + "_" + str(len(iterations))
             + "_all.csv", 'w+', newline='\n', encoding='utf-8') as csv_file:
     writer = csv.writer(csv_file)
     writer.writerow(["Key", "Iteration", "Min", "Max", "Average", "Std. Dev."])
@@ -333,7 +333,7 @@ def setup_alg(options, alg_import):
                 futures[executor.apply_async(run_alg, (vars(options), alg_import.Algorithm))] = "k=" + str(k) + ", n=" + str(n)
               else:
                 logbook = run_alg(vars(options), alg_import.Algorithm)
-                key = "k=" + str(k) + ", n=" + str(n)
+                key = "k=" + str(k) + ", n=" + str(n) 
                 log_dict[key] = logbook
                 iterations = logbook.get('iterations')
                 print_progress_bar(run_num, 144)
@@ -361,7 +361,7 @@ def setup_alg(options, alg_import):
           plot_multi_data(iterations, log_dict, alg_import)
           
         if options.is_csv_exported:
-          save_csv_multi(iterations, log_dict, "k=" + str(options.k) + ", n=" + str(options.size), alg_import)
+          save_csv_multi(iterations, log_dict, alg_import)
     else:
       logbook = run_alg(vars(options), alg_import.Algorithm)
       min_results = logbook.get("min")
@@ -371,7 +371,7 @@ def setup_alg(options, alg_import):
         plot_single_data(iterations, min_results, "k=" + str(options.k) + ", n=" + str(options.size))
         
       if options.is_csv_exported:
-          save_csv_single(iterations, logbook, "k=" + str(options.k) + ", n=" + str(options.size), alg_import)
+          save_csv_single(iterations, logbook, "k=" + str(options.k) + ", n=" + str(options.size)+ ", seed="+str(option.seed), alg_import)
       
 def main():
   # build the parser for implementation
