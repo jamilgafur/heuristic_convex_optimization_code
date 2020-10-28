@@ -271,8 +271,11 @@ def plot_single_data(iterations, data, key, alg_import):
   plt.ylabel("Error")
   plt.savefig(alg_import.to_string() + '__single_' + str(len(iterations)) + '.svg', bbox_extra_artists=(legend,), bbox_inches='tight')
   
-def save_csv_multi(iterations, output_dict, alg_import):
-  with open(r'csvs/' + alg_import.to_string() + "_" + str(len(iterations))
+def save_csv_multi(iterations, output_dict, key, alg_import):
+  name = key.replace("=", "_")
+  name = name.replace(",", '_')
+  name = name.replace(" ", '')
+  with open(r'csvs/' + alg_import.to_string() + "_iteration_" + str(len(iterations)) + "_" + name 
           + "_all.csv", 'w+', newline='\n', encoding='utf-8') as csv_file:
     writer = csv.writer(csv_file)
     writer.writerow(["Key", "Iteration", "Min", "Max", "Average", "Std. Dev."])
@@ -361,7 +364,7 @@ def setup_alg(options, alg_import):
           plot_multi_data(iterations, log_dict, alg_import)
           
         if options.is_csv_exported:
-          save_csv_multi(iterations, log_dict, alg_import)
+          save_csv_multi(iterations, log_dict, "k=" + str(options.k) + ", n=" + str(options.size), alg_import)
     else:
       logbook = run_alg(vars(options), alg_import.Algorithm)
       min_results = logbook.get("min")
