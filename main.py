@@ -281,7 +281,11 @@ def save_csv_multi(iterations, output_dict, alg_import):
         writer.writerow([key, i, mi, ma, a, s])
   
 def save_csv_single(iterations, output_dict, key, alg_import):
-  with open(r'csvs/' + alg_import.to_string() + "_" + str(len(iterations))
+    # save_csv_single(iterations, logbook, "k=" + str(options.k) + ", n=" + str(options.size), alg_import)
+  name = key.replace("=", "_")
+  name = name.replace(",", '_')
+  name = name.replace(" ", '')
+  with open(r'csvs/' + alg_import.to_string() + "_iteration_" + str(len(iterations)) + "_" + name 
           + "_single.csv", 'w+', newline='\n', encoding='utf-8') as csv_file:
     writer = csv.writer(csv_file)
     writer.writerow(["Key", "Iteration", "Min", "Max", "Average", "Std. Dev."])
