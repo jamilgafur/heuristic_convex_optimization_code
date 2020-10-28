@@ -54,7 +54,7 @@ class Algorithm:
     # optimization function 1
     def evalutate_quad_opt(self, individual):
         x = np.array(individual, dtype=float)
-        value = 0.5 * np.matmul(np.matmul(x.T, self.A), x) - np.matmul(self.b.T, x)
+        value = np.linalg.norm(np.matmul(self.A, x) - self.b, 2)
         return value
 
     # Evaluate a single x (x_i)
