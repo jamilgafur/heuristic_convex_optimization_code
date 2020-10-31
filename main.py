@@ -281,7 +281,6 @@ def save_csv_multi(iterations, output_dict, alg_import, seed):
         writer.writerow([key, i, mi, ma, a, s])
   
 def save_csv_single(iterations, output_dict, key, alg_import):
-    # save_csv_single(iterations, logbook, "k=" + str(options.k) + ", n=" + str(options.size), alg_import)
   name = key.replace("=", "_")
   name = name.replace(",", '_')
   name = name.replace(" ", '')
@@ -371,7 +370,7 @@ def setup_alg(options, alg_import):
         plot_single_data(iterations, min_results, "k=" + str(options.k) + ", n=" + str(options.size))
         
       if options.is_csv_exported:
-          save_csv_single(iterations, logbook, "k=" + str(options.k) + ", n=" + str(options.size)+ ", seed="+str(options.seed), alg_import)
+          save_csv_single(iterations, logbook, "pop=" + str(options.pop_size) +", k=" + str(options.k) + ", n=" + str(options.size)+ ", seed="+str(options.seed), alg_import)
       
 def main():
   # build the parser for implementation
