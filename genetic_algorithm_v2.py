@@ -218,7 +218,6 @@ class Algorithm:
         #once you start getting too close to 0.00. To do this, but still keep the shape, we
         #use 1.2 for the power. (the fitness value is inverted, so -1 becomes +1 or invert 
         #the graph of X^1.2, and that will be maximized)
-        value = pow(value, 8)
       except Warning:
         value = 1000000000
       
