@@ -18,7 +18,7 @@ import signal
 #Imports for the algorithms
 import genetic_algorithm_v2 as ga
 import GSA as GSA
-
+import PSO as PSO
 #For graphing
 import matplotlib.pyplot as plt
 
@@ -406,7 +406,7 @@ def main():
   np.random.seed(options.seed)
   
   #Add imported algorithm modules to this list to have them be used.
-  for alg in [ga, GSA]:
+  for alg in [ga, GSA, PSO]:
     setup_alg(options, alg)
     
 
