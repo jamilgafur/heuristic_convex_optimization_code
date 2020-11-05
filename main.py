@@ -406,7 +406,8 @@ def main():
   np.random.seed(options.seed)
   
   #Add imported algorithm modules to this list to have them be used.
-  for alg in [ga, GSA, PSO]:
+  for alg in [PSO]:
+    print("running: {}".format(alg))
     setup_alg(options, alg)
     
 

@@ -3,7 +3,7 @@ import os
 
 
 current_path = os.getcwd()
-path = os.getcwd() + "/csvs/default"
+path = os.getcwd() + "/csvs"
 print(path)
 all_files = []
 for root, dirs, files in os.walk(path):
@@ -27,7 +27,7 @@ for f in all_files:
 
 n_list = [1,10,50,100,150,200,250,300,350]
 k_list = [1,10,50,100,150,200,250,300,350]
-iterations = [100,200]
+iterations = [100]
 pop_size = 300
 seed = 1234
 os.chdir(current_path)
@@ -37,7 +37,7 @@ for i in iterations:
             new_test = (i,pop_size, k, n, seed)     
             command = "python main.py --output-csv --num-gen {} -k {} -n {} -p {} ".format(i, k,n, pop_size)
             print(command)
-            if not new_test in ran_test:
+            if not new_test in ran_test or 1==1:
                 process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 out , err = process.communicate()
                 errcode = process.returncode
