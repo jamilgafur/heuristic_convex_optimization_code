@@ -1,4 +1,5 @@
 # GSA generated files
+run.py
 *.txt
 # Byte-compiled / optimized / DLL files
 __pycache__/
