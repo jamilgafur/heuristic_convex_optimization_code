@@ -18,7 +18,7 @@ import signal
 #Imports for the algorithms
 import genetic_algorithm_v2 as ga
 import GSA as GSA
-
+import PSO as PSO
 #For graphing
 import matplotlib.pyplot as plt
 
@@ -271,9 +271,9 @@ def plot_single_data(iterations, data, key, alg_import):
   plt.ylabel("Error")
   plt.savefig(alg_import.to_string() + '__single_' + str(len(iterations)) + '.svg', bbox_extra_artists=(legend,), bbox_inches='tight')
   
-def save_csv_multi(iterations, output_dict, alg_import):
-  with open(r'csvs/' + alg_import.to_string() + "_" + str(len(iterations))
-          + "_all.csv", 'w+', newline='\n', encoding='utf-8') as csv_file:
+def save_csv_multi(iterations, output_dict, alg_import, seed):
+  with open(r'csvs/' + alg_import.to_string() + "_iterations_" + str(len(iterations)) + "_seed_"+seed+"_"
+            + "_all.csv", 'w+', newline='\n', encoding='utf-8') as csv_file:
     writer = csv.writer(csv_file)
     writer.writerow(["Key", "Iteration", "Min", "Max", "Average", "Std. Dev."])
     for key, (_, mins, maxs, avgs, stds) in output_dict.items():
@@ -281,7 +281,10 @@ def save_csv_multi(iterations, output_dict, alg_import):
         writer.writerow([key, i, mi, ma, a, s])
   
 def save_csv_single(iterations, output_dict, key, alg_import):
-  with open(r'csvs/' + alg_import.to_string() + "_" + str(len(iterations))
+  name = key.replace("=", "_")
+  name = name.replace(",", '_')
+  name = name.replace(" ", '')
+  with open(r'csvs/' + alg_import.to_string() + "_iteration_" + str(len(iterations)) + "_" + name 
           + "_single.csv", 'w+', newline='\n', encoding='utf-8') as csv_file:
     writer = csv.writer(csv_file)
     writer.writerow(["Key", "Iteration", "Min", "Max", "Average", "Std. Dev."])
@@ -329,7 +332,7 @@ def setup_alg(options, alg_import):
                 futures[executor.apply_async(run_alg, (vars(options), alg_import.Algorithm))] = "k=" + str(k) + ", n=" + str(n)
               else:
                 logbook = run_alg(vars(options), alg_import.Algorithm)
-                key = "k=" + str(k) + ", n=" + str(n)
+                key = "k=" + str(k) + ", n=" + str(n) 
                 log_dict[key] = logbook
                 iterations = logbook.get('iterations')
                 print_progress_bar(run_num, 144)
@@ -357,7 +360,7 @@ def setup_alg(options, alg_import):
           plot_multi_data(iterations, log_dict, alg_import)
           
         if options.is_csv_exported:
-          save_csv_multi(iterations, log_dict, alg_import)
+          save_csv_multi(iterations, log_dict, alg_import, str(options.seed))
     else:
       logbook = run_alg(vars(options), alg_import.Algorithm)
       min_results = logbook.get("min")
@@ -367,7 +370,7 @@ def setup_alg(options, alg_import):
         plot_single_data(iterations, min_results, "k=" + str(options.k) + ", n=" + str(options.size))
         
       if options.is_csv_exported:
-          save_csv_single(iterations, logbook, "k=" + str(options.k) + ", n=" + str(options.size), alg_import)
+          save_csv_single(iterations, logbook, "pop=" + str(options.pop_size) +", k=" + str(options.k) + ", n=" + str(options.size)+ ", seed="+str(options.seed), alg_import)
       
 def main():
   # build the parser for implementation
@@ -403,7 +406,8 @@ def main():
   np.random.seed(options.seed)
   
   #Add imported algorithm modules to this list to have them be used.
-  for alg in [ga, GSA]:
+  for alg in [PSO]:
+    print("running: {}".format(alg))
     setup_alg(options, alg)
     
 
