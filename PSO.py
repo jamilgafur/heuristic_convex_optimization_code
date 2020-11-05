@@ -74,7 +74,7 @@ class Algorithm():
         # establish the swarm
         self.swarm=[]
         for i in range(0,self.num_particles):
-            self.swarm.append(Particle([random.uniform(-10, 10) for i in range(self.dimension) ]))
+            self.swarm.append(Particle([ random.randint(-30, 30)  for i in range(self.dimension) ]))
 
     def run(self):
         # begin optimization loop
