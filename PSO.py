@@ -10,17 +10,14 @@ def to_string():
 
 class Particle:
     def __init__(self,x0):
-        print("neg move")
         self.position = []        # particle position
         self.velocity_i = []          # particle velocity
         self.pos_best_i = []          # best position individual
         self.err_best_i = -1          # best error individual
         self.err_i = -1               # error individual
         self.num_dimensions = len(x0)
-        
-        for i in range(0,self.num_dimensions):
-            self.velocity_i.append(random.uniform(-1,1))
-            self.position.append(x0[i])
+        self.velocity_i = np.random.random(self.num_dimensions)
+        self.position = np.random.randint(low=-10, high=10, size=( self.num_dimensions))
         
     # evaluate current fitness
     def evaluate(self,costFunc):
@@ -33,15 +30,11 @@ class Particle:
 
     # update new particle velocity
     def update_velocity(self,pos_best_g):
-        w=0.5       # constant inertia weight (how much to weigh the previous velocity)
-        c1=1        # cognative constant
-        c2=2        # social constant
+        w=-.05 # constant inertia weight (how much to weigh the previous velocity)
 
         for i in range(0,self.num_dimensions):
-            r1=random.random()
-            r2=random.random()
-            vel_cognitive=c1*r1*(self.pos_best_i[i]-self.position[i])
-            vel_social=c2*r2*(pos_best_g[i]-self.position[i])
+            vel_cognitive=self.pos_best_i[i]-self.position[i]
+            vel_social=pos_best_g[i]-self.position[i]
             self.velocity_i[i]=w*self.velocity_i[i]+vel_cognitive+vel_social
 
     # update the particle position based off new velocity updates
