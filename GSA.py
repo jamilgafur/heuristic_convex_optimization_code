@@ -15,6 +15,7 @@ class Algorithm:
     def __init__(self, **args):
         self.A = None
         self.b = None
+        self.k = args["k"]
         self.A, self.b = gi(args["k"], args["size"], args["debug"])
         self.debug = args["debug"] 
         self.G =  None
@@ -33,8 +34,15 @@ class Algorithm:
         self.worse_so_far = None
         
         
-        self.locations = np.array([[ random.randint(-30, 30) for i in range(self.dimension) ] for i in range(self.pop_size)])        
-            
+        self.locations = np.random.randint(low=-1, high=1,
+                size=(self.pop_size, self.dimension)) 
+        self.V = np.random.random((self.pop_size, self.dimension))
+        self.cost_matrix = np.full((self.pop_size, 1), None)
+        self.inertia = np.full((self.pop_size, 1), None)
+        self.accel = np.full((self.pop_size, self.dimension), None)
+        self.f = np.full((self.pop_size, self.dimension), None)
+        self.gen_cost_matrix()
+
         if self.debug and len(self.A) == 2:
             self.fig = plt.figure()
             self.ax = plt.axes()
@@ -42,13 +50,6 @@ class Algorithm:
             self.history_loc = []
             self.history_loc.append(self.locations)
             
-        
-        self.V = np.random.rand(self.pop_size, self.dimension)
-        self.f = np.full((self.pop_size, self.dimension), None)  # None  # Will become a list inside cal_f
-        self.accel = np.full((self.pop_size, self.dimension), None)
-        self.inertia = np.full((self.pop_size, 1), None)
-        self.mass_matrix = np.full((self.pop_size, 1), None)
-        self.cost_matrix = np.full((self.pop_size, 1), None)
         
         
     # optimization function 1
@@ -77,7 +78,7 @@ class Algorithm:
         best = np.min(self.cost_matrix)
         worst = np.max(self.cost_matrix)
         
-        self.inertia = (self.cost_matrix - worst) / best - worst
+        self.inertia = (self.cost_matrix - worst) + np.finfo('float32').eps/ (best - worst)
         
         if self.debug > 1:
             print("\tine: \n{}".format(self.inertia))
@@ -94,12 +95,12 @@ class Algorithm:
 
 
     def update_grav(self):
-        self.G = 10 *  np.exp(-1 * (self._current_iter / self.max_iter) )
+        self.G = 9.81 * np.exp(-1 * (self._current_iter / self.max_iter) )
         self.cal_force()
         
     def cal_force(self):
         costs = self.cost_matrix.copy()
-        costs.sort(axis=0)
+#        costs.sort(axis=0)
         
         for i in range(self.pop_size):
             f = None
@@ -110,8 +111,8 @@ class Algorithm:
                     f = self.G * (dividend / divisor) * (self.locations[j] - self.locations[i])
                 else:
                     f = f + self.G * (dividend / divisor) * (self.locations[j] - self.locations[i])
-
-            self.f[i] = f * np.random.uniform(0,1)
+            f = f * random.random()
+            self.f[i] = f 
             
         if self.debug > 1:
             print("\tfce: \n{}".format(self.f))
@@ -119,8 +120,7 @@ class Algorithm:
         self.cal_accel()
 
     def cal_accel(self):
-        for i in range(self.pop_size):
-            self.accel[i] = self.f[i] / self.mass_matrix[i]
+        self.accel = self.f / self.mass_matrix
         
         self.cal_vel()
 
@@ -210,14 +210,13 @@ class Algorithm:
                 self.history_loc.append(self.locations)
             
         
-            iterave = sum(self.cost_matrix) / len(self.cost_matrix)
-            
-            avg.append(iterave[0])         
-            
-            min_results.append(min(self.cost_matrix.flatten()))
-            max_results.append(max(self.cost_matrix.flatten()))
-            std.append(np.std(min_results))
-                       
+            itermin = np.min(self.cost_matrix)
+            itermax = np.max(self.cost_matrix)
+    
+            min_results.append(itermin)
+            max_results.append(itermax)
+            std.append(np.std(itermin))
+            avg.append((itermin+itermax )/ 2)
 
             self._current_iter += 1
             
@@ -252,12 +251,11 @@ class Algorithm:
                     plt.colorbar()
                     anim.save('animate.gif', writer='imagemagick')
                     
-                    
         print("\tGSA Best individual seen fitness value: {}".format(self.evaluate(self.best_so_far )))
         print("\tGSA Best individual seen location: {}".format(self.best_so_far ))
         print("\tGSA Best individual seen generation apperared in: {}".format(self.best_so_far_iteration ))
         
-        print("\n\nExact minimizer for problem is: %r" % (np.asarray(np.matmul(np.linalg.inv(self.A), self.b))))
+        #print("\n\nExact minimizer for problem is: %r" % (np.asarray(np.matmul(np.linalg.inv(self.A), self.b))))
         output_dictionary = {"iterations": [i for i in range(self.max_iter)], "avg": avg, "min": min_results, "max": max_results, "std": std}
         return self.best_so_far, self.evaluate(self.best_so_far), output_dictionary
 
