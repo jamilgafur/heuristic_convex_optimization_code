@@ -14,19 +14,21 @@ class Particle:
         self.velocity_i = []          # particle velocity
         self.pos_best_i = []          # best position individual
         self.err_best_i = -1          # best error individual
-        self.err_i = -1               # error individual
+        self.cost_i = -1               # error individual
         self.num_dimensions = len(x0)
-        self.velocity_i = np.random.random(self.num_dimensions)
-        self.position = np.random.randint(low=-10, high=10, size=( self.num_dimensions))
+        self.velocity_i = [0 for i in range(self.num_dimensions)]
+        self.position = []
+        for i in range(0,self.num_dimensions):
+            self.position.append(np.random.normal(0,1))
         
     # evaluate current fitness
     def evaluate(self,costFunc):
-        self.err_i=costFunc(self.position)
+        self.cost_i = costFunc(self.position)
 
         # check to see if the current position is an individual best
-        if self.err_best_i== -1 or self.err_i < self.err_best_i:
+        if self.err_best_i== -1 or self.cost_i < self.err_best_i:
             self.pos_best_i=self.position
-            self.err_best_i=self.err_i
+            self.err_best_i=self.cost_i
 
     # update new particle velocity
     def update_velocity(self,pos_best_g):
@@ -76,21 +78,21 @@ class Algorithm():
             for j in range(0,self.num_particles):
                 self.swarm[j].evaluate(self.costFunc)
                 # determine if current particle is the best (globally)
-                if self.err_best_g == -1 or self.swarm[j].err_i < self.err_best_g :
+                if self.err_best_g == -1 or self.swarm[j].cost_i < self.err_best_g :
                     self.pos_best_g = self.swarm[j].position
-                    self.err_best_g = self.swarm[j].err_i
+                    self.err_best_g = self.swarm[j].cost_i
                     
 
             for j in range(0,self.num_particles):
                 self.swarm[j].update_velocity(self.pos_best_g)
                 self.swarm[j].update_position()
             
-            smallest = min([particle.err_i for particle in self.swarm ])
+            smallest = min([particle.cost_i for particle in self.swarm ])
             self.min_results.append(smallest)
-            largest = max([particle.err_i for particle in self.swarm ])
+            largest = max([particle.cost_i for particle in self.swarm ])
             self.max_results.append(largest)
-            self.avg.append(sum([particle.err_i for particle in self.swarm])/self.num_particles)
-            self.std.append(statistics.stdev([particle.err_i for particle in self.swarm ]))
+            self.avg.append(sum([particle.cost_i for particle in self.swarm])/self.num_particles)
+            self.std.append(statistics.stdev([particle.cost_i for particle in self.swarm ]))
 
 
 

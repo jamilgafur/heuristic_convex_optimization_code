@@ -13,7 +13,8 @@ def to_string():
     return "GSA"
 
 class Particle:
-    def __init__(self, dimension, name):
+    def __init__(self, dimension, name, debug):
+        self.debug = debug
         self.name = name
         self.position = []        # particle position
         self.num_dimensions = dimension
@@ -30,7 +31,7 @@ class Particle:
         
     # evaluate current fitness
     def evaluate(self,costFunc):
-        self.cost = round(np.sum([i**2 for i in self.position.copy()]),2)#costFunc(self.position)
+        self.cost = costFunc(self.position)
         
         
     def calc_inertia(self, best, worst):
@@ -59,35 +60,33 @@ class Particle:
         
     # update the particle position based off new velocity updates
     def update_position(self):
-        #name position cost inertia mass grav force accel velocity
-        tableformat = "{:5}{:10}{:10}\t{:10}\t{:10}\t{:10}\t{:10}\t{:10}\t{:10}".format(self.name,
-                                                        np.round(self.position[0],2),
-                                                        self.cost,
-                                                        np.round(self.inertia,2),
-                                                          np.round(self.mass,2),
-                                                          np.round(self.gravity,2),
-                                                        np.round( self.force[0],2),
-                                                        np.round( self.accel[0],2),
-                                                          np.round(self.velocity[0],2))
-        print(tableformat)
+        if self.debug > 0:
+            tableformat = "{:5}\t{:10}\t{:10}\t{:10}\t{:10}\t{:10}\t{:10}\t{:10}".format(self.name,
+                                                            round(self.cost,7),
+                                                            round(self.inertia,7),
+                                                            round(self.mass,7),
+                                                            round(self.gravity,7),
+                                                            round(self.force[0],7),
+                                                            round(self.accel[0],7),
+                                                            round(self.velocity[0],7))
+            print(tableformat)
         self.position =  np.add(self.position,self.velocity).tolist()
                 
 class Algorithm():
     def __init__(self, **args):
-        print("{:5}{:10}{:10}{:10}{:10}{:10}{:10}{:10}{:10}\n".format("name",
-                                                "position",
-                                                "cost",
-                                                "inertia",
-                                                "mass",
-                                                "gravity",
-                                                "force",
-                                                "accel",
-                                                "velocity"))
-    # ,costFunc,x0,bounds,num_particles,maxiter
+        self.debug = args["debug"]
+        if self.debug > 0:
+            print("{:2}{:10}{:10}{:10}{:10}{:10}{:10}{:10}\n".format("name",
+                                "cost",
+                                "inertia",
+                                "mass",
+                                "gravity",
+                                "force",
+                                "accel",
+                                "velocity"))
         self.A = None
         self.b = None
         self.A, self.b = gi(args["k"], args["size"], args["debug"])
-
         self.dimension = args["size"]
         self.best_cost = None                   # best error for group
         self.best_cost_location = []                   # best position for group
@@ -109,7 +108,7 @@ class Algorithm():
         # establish the swarm
         self.swarm=[]
         for i in range(0,self.num_particles):
-            self.swarm.append(Particle(self.dimension, i))
+            self.swarm.append(Particle(self.dimension, i, self.debug))
 
     def run(self):
         # begin optimization loop
@@ -143,26 +142,23 @@ class Algorithm():
                 particle.calc_velocity()
                 particle.update_position()
                     
-                            
-            print("\t-----")
-            print("\tbest:{} \tworse:{}".format(self.best_cost,self.worse_cost))
-            print("\t-----")
-            smallest = min([particle.cost for particle in self.swarm ])
-            self.min_results.append(smallest)
-            largest = max([particle.cost for particle in self.swarm ])
-            self.max_results.append(largest)
-            self.avg.append(sum([particle.cost for particle in self.swarm])/self.num_particles)
-            self.std.append(statistics.stdev([particle.cost for particle in self.swarm ]))
-            print("----" * 10)
 
+            smallest = max([particle.cost for particle in self.swarm])
+            self.min_results.append(smallest)
+            largest = min([particle.cost for particle in self.swarm])
+            self.max_results.append(largest)
+            self.avg.append((smallest+largest)/self.num_particles)
+            self.std.append(statistics.stdev([particle.cost for particle in self.swarm ]))
+            
+            if self.debug > 0:
+                print("\t-----")
+                print("\tbest:{} \tworse:{}".format(self.best_cost,self.worse_cost))
+                print("\t-----")
 
         
-        # print("\tBest      cost: {}".format(self.best_cost))
-        # print("\tBest  location: {}".format(self.best_cost_location))
-        # print("\tBest iteration: {}".format(self.best_iteration))
-        quit()
-        output_dictionary = {"iterations": [i for i in range(1, self.maxiter+1)], "avg": self.avg, "min": self.min_results, "max": self.max_results, "std": self.std}
-        return self.pos_best_g, self.costFunc(self.pos_best_g), output_dictionary
+        print("\tBest individual seen fitness value: {:0.3f}".format(self.best_cost))
+        output_dictionary = {"iterations": [i for i in range(1, self.maxiter+1)], "max": self.max_results, "avg": self.avg, "min": self.min_results, "std": self.std}
+        return self.best_cost_location, self.costFunc(self.best_cost_location), output_dictionary
 
 
     # optimization function 1

@@ -296,8 +296,8 @@ class Algorithm:
       
       if self.debug >= 2:
         print("Generation %i has (min, max) fitness values: (%.3f, %.3f)" % (g, max(fitnesses)[0], min(fitnesses)[0]))
-      elif self.debug == 1 and g % 10 == 0:
-        print("Generation %i has (min, max) fitness values: (%.3f, %.3f)" % (g, max(fitnesses)[0], min(fitnesses)[0]))
+      #elif self.debug == 1 and g % 10 == 0:
+      #  print("Generation %i has (min, max) fitness values: (%.3f, %.3f)" % (g, max(fitnesses)[0], min(fitnesses)[0]))
       
       for ind, fit in zip(invalid_ind, fitnesses):
         ind.fitness.values = fit
@@ -316,7 +316,8 @@ class Algorithm:
         
       print("\tBest individual seen fitness value:\t\t%.3f" % (hof[0].fitness.values[0]))
       print("\tBest individual seen generation appeared in:\t%i" % (hof[0].generation))
-      
+    
+    print("\tBest individual seen fitness value:\t\t%.3f" % (hof[0].fitness.values[0]))
     gen, min_results, max_results, avg, std = logbook.select("gen", "min", "max", "avg", "std")
     return hof[0], hof[0].fitness.values[0], {"iterations": gen, "min": min_results, "max": max_results, "avg": avg, "std": std}
   
