@@ -143,9 +143,9 @@ class Algorithm():
                 particle.update_position()
                     
 
-            smallest = max([particle.cost for particle in self.swarm])
+            smallest = min([particle.cost for particle in self.swarm])
             self.min_results.append(smallest)
-            largest = min([particle.cost for particle in self.swarm])
+            largest = max([particle.cost for particle in self.swarm])
             self.max_results.append(largest)
             self.avg.append((smallest+largest)/self.num_particles)
             self.std.append(statistics.stdev([particle.cost for particle in self.swarm ]))
