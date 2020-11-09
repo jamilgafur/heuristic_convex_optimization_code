@@ -99,7 +99,7 @@ class Algorithm():
         
         print("\tBest individual seen fitness value: {:0.3f}".format(self.err_best_g))
         
-        output_dictionary = {"iterations": [i for i in range(1, self.maxiter+1)], "avg": self.avg, "min": self.min_results, "max": self.max_results, "std": self.std}
+        output_dictionary = {"iterations": [i for i in range(1, self.maxiter+1)], "min": self.min_results, "max": self.max_results, "avg": self.avg, "std": self.std}
         return self.pos_best_g, self.costFunc(self.pos_best_g), output_dictionary
 
 

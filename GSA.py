@@ -149,15 +149,13 @@ class Algorithm():
             self.max_results.append(largest)
             self.avg.append((smallest+largest)/self.num_particles)
             self.std.append(statistics.stdev([particle.cost for particle in self.swarm ]))
-            
             if self.debug > 0:
                 print("\t-----")
                 print("\tbest:{} \tworse:{}".format(self.best_cost,self.worse_cost))
                 print("\t-----")
 
-        
         print("\tBest individual seen fitness value: {:0.3f}".format(self.best_cost))
-        output_dictionary = {"iterations": [i for i in range(1, self.maxiter+1)], "max": self.max_results, "avg": self.avg, "min": self.min_results, "std": self.std}
+        output_dictionary = {"iterations": [i for i in range(self.maxiter)], "min": self.min_results, "max": self.max_results, "avg": self.avg, "std": self.std}
         return self.best_cost_location, self.costFunc(self.best_cost_location), output_dictionary
 
 
