@@ -32,11 +32,13 @@ class Particle:
 
     # update new particle velocity
     def update_velocity(self,pos_best_g):
-        w=-.05 # constant inertia weight (how much to weigh the previous velocity)
-
+        w=.05 # constant inertia weight (how much to weigh the previous velocity)
+        c1=1 * random.random()        # cognative constant
+        c2=1 * random.random()        # social constant
+        
         for i in range(0,self.num_dimensions):
-            vel_cognitive=self.pos_best_i[i]-self.position[i]
-            vel_social=pos_best_g[i]-self.position[i]
+            vel_cognitive=c1*self.position[i]-self.pos_best_i[i]
+            vel_social=c2*pos_best_g[i]-self.position[i]
             self.velocity_i[i]=w*self.velocity_i[i]+vel_cognitive+vel_social
 
     # update the particle position based off new velocity updates
@@ -99,7 +101,7 @@ class Algorithm():
         
         print("\tBest individual seen fitness value: {:0.3f}".format(self.err_best_g))
         
-        output_dictionary = {"iterations": [i for i in range(1, self.maxiter+1)], "min": self.min_results, "max": self.max_results, "avg": self.avg, "std": self.std}
+        output_dictionary = {"iterations": [i for i in range(self.maxiter)], "min": self.min_results, "max": self.max_results, "avg": self.avg, "std": self.std}
         return self.pos_best_g, self.costFunc(self.pos_best_g), output_dictionary
 
 
