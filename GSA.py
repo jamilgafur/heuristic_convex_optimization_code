@@ -147,7 +147,7 @@ class Algorithm():
             self.min_results.append(smallest)
             largest = max([particle.cost for particle in self.swarm])
             self.max_results.append(largest)
-            self.avg.append((smallest+largest)/self.num_particles)
+            self.avg.append(sum([particle.cost for particle in self.swarm])/self.num_particles)
             self.std.append(statistics.stdev([particle.cost for particle in self.swarm ]))
             if self.debug > 0:
                 print("\t-----")
