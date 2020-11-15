@@ -40,7 +40,7 @@ class Particle:
         c2=2 * random.random()        # social constant
         
         vel_cognitive=np.multiply(c1,np.subtract(self.pos_best_i, self.position))
-        vel_social   =np.multiply(c2,np.subtract(self.pos_best_g , self.position))
+        vel_social   =np.multiply(c2,np.subtract(pos_best_g , self.position))
         self.velocity_i =np.multiply( w,self.velocity_i) + vel_cognitive+vel_social
 
     # update the particle position based off new velocity updates
