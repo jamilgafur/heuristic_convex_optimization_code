@@ -9,20 +9,23 @@ def to_string():
     return "PSO"
 
 class Particle:
-    def __init__(self,x0):
+    def __init__(self,dimension, name, debug):
+        self.debug = debug
+        self.name = name
         self.position = []        # particle position
-        self.velocity_i = []          # particle velocity
         self.pos_best_i = []          # best position individual
         self.err_best_i = -1          # best error individual
         self.cost_i = -1               # error individual
-        self.num_dimensions = len(x0)
+        self.num_dimensions = dimension
+        self.debug = debug
+
         self.velocity_i = [0 for i in range(self.num_dimensions)]
-        self.position = []
         for i in range(0,self.num_dimensions):
             self.position.append(np.random.normal(0,1))
-        
+            
     # evaluate current fitness
     def evaluate(self,costFunc):
+        print(self.position)
         self.cost_i = costFunc(self.position)
 
         # check to see if the current position is an individual best
@@ -36,19 +39,24 @@ class Particle:
         c1=1 * random.random()        # cognative constant
         c2=1 * random.random()        # social constant
         
-        for i in range(0,self.num_dimensions):
-            vel_cognitive=c1*self.position[i]-self.pos_best_i[i]
-            vel_social=c2*pos_best_g[i]-self.position[i]
-            self.velocity_i[i]=w*self.velocity_i[i]+vel_cognitive+vel_social
+        vel_cognitive=np.multiply(c1,np.subtract(self.position,self.pos_best_i))
+        vel_social = np.subtract( np.multiply(c2,pos_best_g) , self.position)
+        self.velocity_i =np.multiply( w,self.velocity_i) + vel_cognitive+vel_social
 
     # update the particle position based off new velocity updates
     def update_position(self):
-        for i in range(0,self.num_dimensions):
+       if self.debug > 0:
+          print("{:5}\t{:10}".format("name",
+                    "cost"))
+          tableformat = "{:5}\t{:10}".format(self.name,
+                                                            round(self.cost_i,7))
+          print(tableformat)
+       for i in range(0,self.num_dimensions):
             self.position[i]=self.position[i]+self.velocity_i[i]
                 
 class Algorithm():
     def __init__(self, **args):
-        # ,costFunc,x0,bounds,num_particles,maxiter
+        self.debug = args["debug"]
         self.A = None
         self.b = None
         self.A, self.b = gi(args["k"], args["size"], args["debug"])
@@ -64,14 +72,14 @@ class Algorithm():
         self.std = []
         
         if args["problems"] == 1:
-          self.costFunc = self.func1
+          self.costFunc = self.evalutate_quad_opt
         else:
-          self.costFunc = self.func1
+          self.costFunc = self.evalutate_quad_opt
           
         # establish the swarm
         self.swarm=[]
         for i in range(0,self.num_particles):
-            self.swarm.append(Particle([ random.randint(-30, 30)  for i in range(self.dimension) ]))
+            self.swarm.append(Particle(self.dimension, i, self.debug))
 
     def run(self):
         # begin optimization loop
@@ -94,7 +102,7 @@ class Algorithm():
             largest = max([particle.cost_i for particle in self.swarm ])
             self.max_results.append(largest)
             self.avg.append(sum([particle.cost_i for particle in self.swarm])/self.num_particles)
-            self.std.append(statistics.stdev([particle.cost_i for particle in self.swarm ]))
+            self.std.append(1)#statistics.stdev([particle.cost_i for particle in self.swarm ]))
 
 
 
@@ -105,16 +113,11 @@ class Algorithm():
         return self.pos_best_g, self.costFunc(self.pos_best_g), output_dictionary
 
 
-    def func1(self, x):
-        total=0
-        for i in range(len(x)):
-            total+=x[i]**2
-        return total
+
     # optimization function 1
     def evalutate_quad_opt(self, individual):
         x = np.array(individual, dtype=float)
         #value = 0.5 * np.matmul(np.matmul(x.T, self.A), x) - np.matmul(self.b.T, x)
         value = np.linalg.norm(np.matmul(self.A, x) - self.b, 2)
         return value
-
 
