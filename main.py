@@ -16,7 +16,7 @@ import multiprocessing
 import signal
 
 #Imports for the algorithms
-import genetic_algorithm_v2 as ga
+import GA as GA 
 import GSA as GSA
 import PSO as PSO
 #For graphing
@@ -406,7 +406,7 @@ def main():
   np.random.seed(options.seed)
   
   #Add imported algorithm modules to this list to have them be used.
-  for alg in [PSO]:
+  for alg in [PSO, GSA, GA]:
     print("running: {}".format(alg))
     setup_alg(options, alg)
     
