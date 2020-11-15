@@ -16,7 +16,7 @@ class Particle:
     def __init__(self, dimension, name, debug):
         self.debug = debug
         self.name = name
-        self.position = []        # particle position
+        self.position = []
         self.num_dimensions = dimension
         self.force = [0 for i in range(self.num_dimensions)]
         self.accel = [0 for i in range(self.num_dimensions)]
@@ -32,58 +32,49 @@ class Particle:
     # evaluate current fitness
     def evaluate(self,costFunc):
         self.cost = costFunc(self.position)
-        
-        
-    def calc_inertia(self, best, worst):
-        self.inertia = np.subtract(self.cost+ np.finfo('float32').eps, worst) / np.subtract(best, worst)
+                
+    def calc_inertia(self, smallest, largest):
+        self.inertia = np.subtract(self.cost, largest) / np.subtract(smallest, largest) + .0001
         return self.inertia
         
     def calc_mass(self, total_inertia):
-        self.mass = np.divide(self.inertia, total_inertia)
-        
-    def update_gravity(self, current_iteration, total_iteration):
-        self.gravity = np.exp(-1 * (np.divide(current_iteration, total_iteration) ))
-
-    def calc_force(self,other_particle):
-        if not self.position == other_particle.position:
-            numerator = np.multiply(other_particle.mass, self.mass)
-            denominator = np.sqrt(np.subtract(self.position , other_particle.position) ** 2) + np.finfo('float32').eps
-            self.force += self.gravity * (numerator / denominator) * np.subtract(other_particle.position , self.position)
-            self.force *=  np.random.uniform(0,1)
-        
-        
+         self.mass = np.divide(self.inertia, total_inertia) 
+         
+    def calc_force(self,other_particle,gravity ):
+        numerator = np.multiply(self.mass, other_particle.mass)
+        denominator = np.linalg.norm(np.subtract(self.position, other_particle.position )) + .001
+        self.force += np.random.random() * gravity * (numerator / denominator) * (np.subtract(other_particle.position , self.position))
+            
     def calc_acceleration(self):
         self.accel = np.divide(self.force, self.mass)
         
     def calc_velocity(self):
-        self.velocity = np.random.uniform(0, 1) * np.add(self.velocity ,self.accel)
+        self.velocity = np.random.uniform(0,1) * np.add(self.velocity,  self.accel)
         
     # update the particle position based off new velocity updates
     def update_position(self):
         if self.debug > 0:
-            tableformat = "{:5}\t{:10}\t{:10}\t{:10}\t{:10}\t{:10}\t{:10}\t{:10}".format(self.name,
+            print("{:5}\t{:10}\t{:10}\t{:10}\t{:10}\t{:10}\t{:10}".format("name",
+                    "cost",
+                    "inertia",
+                    "mass",
+                    "force",
+                    "accel",
+                    "velocity"))
+            tableformat = "{:5}\t{:10}\t{:10}\t{:10}\t{:10}\t{:10}\t{:10}".format(self.name,
                                                             round(self.cost,7),
                                                             round(self.inertia,7),
                                                             round(self.mass,7),
-                                                            round(self.gravity,7),
-                                                            round(self.force[0],7),
-                                                            round(self.accel[0],7),
-                                                            round(self.velocity[0],7))
+                                                            round(sum(self.force),7),
+                                                            round(sum(self.accel),7),
+                                                            round(sum(self.velocity),7))
             print(tableformat)
-        self.position =  np.add(self.position,self.velocity).tolist()
+        self.position = np.add(self.position,self.velocity).tolist()
                 
 class Algorithm():
     def __init__(self, **args):
         self.debug = args["debug"]
-        if self.debug > 0:
-            print("{:2}{:10}{:10}{:10}{:10}{:10}{:10}{:10}\n".format("name",
-                                "cost",
-                                "inertia",
-                                "mass",
-                                "gravity",
-                                "force",
-                                "accel",
-                                "velocity"))
+
         self.A = None
         self.b = None
         self.A, self.b = gi(args["k"], args["size"], args["debug"])
@@ -91,14 +82,13 @@ class Algorithm():
         self.best_cost = None                   # best error for group
         self.best_cost_location = []                   # best position for group
         self.best_iteration = 0
-        self.worse_cost = None                   # best error for group
-        self.worse_cost_location = []                   # best position for group
         self.num_particles = args["pop_size"]
         self.maxiter = args["number_generations"]
         self.avg  = [] 
         self.min_results = []
         self.max_results = []
         self.std = []
+        self.gravity = 0
         
         if args["problems"] == 1:
           self.costFunc = self.evalutate_quad_opt
@@ -113,47 +103,53 @@ class Algorithm():
     def run(self):
         # begin optimization loop
         for i in range(self.maxiter):
+            self.gravity = np.exp( np.divide(i, self.maxiter)**.5  )  
+
             # cycle through particles in swarm and evaluate fitness
             for particle in self.swarm:
                 particle.evaluate(self.costFunc)
-                # determine if current particle is the best (globally)
-                if self.best_cost == None or particle.cost < self.best_cost:
-                    self.best_cost = particle.cost
-                    self.best_cost_location = particle.position.copy()
-                    self.best_iteration = i
-                    
-                if self.worse_cost == None or particle.cost > self.worse_cost:
-                    self.worse_cost_location = particle.position.copy()
-                    self.worse_cost = particle.cost
+
+            
+            smallest = min([particle.cost for particle in self.swarm])
+            largest = max([particle.cost for particle in self.swarm])
+            
+            if self.best_cost == None or smallest < self.best_cost:
+                self.best_cost = smallest
+                self.best_iteration = i
                     
             total_intertia = 0
             for particle in self.swarm:
-                total_intertia += particle.calc_inertia(self.best_cost, self.worse_cost)  
-                
+                if particle.cost == smallest:
+                    self.best_cost_location = particle.position
+                    
+                total_intertia += particle.calc_inertia(smallest, largest)  
+            
             for particle in self.swarm:
                 particle.calc_mass(total_intertia)
-                particle.update_gravity(i, self.maxiter)
-
+                particle.force = [0 for i in range(self.dimension)]
+        
             for particle in self.swarm:
                 for other_particle in self.swarm:
                     if particle.position != other_particle.position:
-                        particle.calc_force(other_particle)
+                        particle.calc_force(other_particle, self.gravity)
+                
+            for particle in self.swarm:
                 particle.calc_acceleration()
                 particle.calc_velocity()
                 particle.update_position()
                     
 
-            smallest = min([particle.cost for particle in self.swarm])
-            self.min_results.append(smallest)
-            largest = max([particle.cost for particle in self.swarm])
-            self.max_results.append(largest)
-            self.avg.append(sum([particle.cost for particle in self.swarm])/self.num_particles)
+            self.min_results.append(round(smallest,3))
+            self.max_results.append(round(largest,3))
+            self.avg.append(round(sum([particle.cost for particle in self.swarm])/self.num_particles, 3))
             self.std.append(statistics.stdev([particle.cost for particle in self.swarm ]))
             if self.debug > 0:
                 print("\t-----")
-                print("\tbest:{} \tworse:{}".format(self.best_cost,self.worse_cost))
+                print("\tbest:{}".format(self.best_cost))
+                print("\tsmall:{} \tlarge:{}".format(smallest,largest))
                 print("\t-----")
 
+        print(self.min_results)
         print("\tBest individual seen fitness value: {:0.3f}".format(self.best_cost))
         output_dictionary = {"iterations": [i for i in range(self.maxiter)], "min": self.min_results, "max": self.max_results, "avg": self.avg, "std": self.std}
         return self.best_cost_location, self.costFunc(self.best_cost_location), output_dictionary

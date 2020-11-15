@@ -13,19 +13,19 @@ class Particle:
         self.debug = debug
         self.name = name
         self.position = []        # particle position
+        self.velocity_i = []          # particle velocity
         self.pos_best_i = []          # best position individual
         self.err_best_i = -1          # best error individual
         self.cost_i = -1               # error individual
-        self.num_dimensions = dimension
-        self.debug = debug
+        self.num_dimensions =         self.debug = debug
 
         self.velocity_i = [0 for i in range(self.num_dimensions)]
+        self.position = []
         for i in range(0,self.num_dimensions):
             self.position.append(np.random.normal(0,1))
-            
+        
     # evaluate current fitness
     def evaluate(self,costFunc):
-        print(self.position)
         self.cost_i = costFunc(self.position)
 
         # check to see if the current position is an individual best
@@ -37,10 +37,10 @@ class Particle:
     def update_velocity(self,pos_best_g):
         w=.05 # constant inertia weight (how much to weigh the previous velocity)
         c1=1 * random.random()        # cognative constant
-        c2=1 * random.random()        # social constant
+        c2=2 * random.random()        # social constant
         
-        vel_cognitive=np.multiply(c1,np.subtract(self.position,self.pos_best_i))
-        vel_social = np.subtract( np.multiply(c2,pos_best_g) , self.position)
+        vel_cognitive=np.multiply(c1,np.subtract(self.pos_best_i, self.position))
+        vel_social   =np.multiply(c2,np.subtract(self.pos_best_g , self.position))
         self.velocity_i =np.multiply( w,self.velocity_i) + vel_cognitive+vel_social
 
     # update the particle position based off new velocity updates
@@ -48,11 +48,10 @@ class Particle:
        if self.debug > 0:
           print("{:5}\t{:10}".format("name",
                     "cost"))
-          tableformat = "{:5}\t{:10}".format(self.name,
-                                                            round(self.cost_i,7))
+          tableformat = "{:5}\t{:10}".format(self.name, round(self.cost_i,7))
           print(tableformat)
-       for i in range(0,self.num_dimensions):
-            self.position[i]=self.position[i]+self.velocity_i[i]
+          
+       self.position= np.add(self.position,self.velocity_i)
                 
 class Algorithm():
     def __init__(self, **args):
@@ -85,24 +84,24 @@ class Algorithm():
         # begin optimization loop
         for i in range(self.maxiter):
             # cycle through particles in swarm and evaluate fitness
-            for j in range(0,self.num_particles):
-                self.swarm[j].evaluate(self.costFunc)
+            for particle in self.swarm:
+                particle.evaluate(self.costFunc)
                 # determine if current particle is the best (globally)
-                if self.err_best_g == -1 or self.swarm[j].cost_i < self.err_best_g :
-                    self.pos_best_g = self.swarm[j].position
-                    self.err_best_g = self.swarm[j].cost_i
+                if self.err_best_g == -1 or particle.cost_i < self.err_best_g :
+                    self.pos_best_g = particle.position
+                    self.err_best_g = particle.cost_i
                     
 
-            for j in range(0,self.num_particles):
-                self.swarm[j].update_velocity(self.pos_best_g)
-                self.swarm[j].update_position()
+            for particle in self.swarm:
+                particle.update_velocity(self.pos_best_g)
+                particle.update_position()
             
             smallest = min([particle.cost_i for particle in self.swarm ])
             self.min_results.append(smallest)
             largest = max([particle.cost_i for particle in self.swarm ])
             self.max_results.append(largest)
             self.avg.append(sum([particle.cost_i for particle in self.swarm])/self.num_particles)
-            self.std.append(1)#statistics.stdev([particle.cost_i for particle in self.swarm ]))
+            self.std.append(statistics.stdev([particle.cost_i for particle in self.swarm ]))
 
 
 
@@ -113,11 +112,11 @@ class Algorithm():
         return self.pos_best_g, self.costFunc(self.pos_best_g), output_dictionary
 
 
-
     # optimization function 1
     def evalutate_quad_opt(self, individual):
         x = np.array(individual, dtype=float)
         #value = 0.5 * np.matmul(np.matmul(x.T, self.A), x) - np.matmul(self.b.T, x)
         value = np.linalg.norm(np.matmul(self.A, x) - self.b, 2)
         return value
+
 
