@@ -12,12 +12,12 @@ class Particle:
     def __init__(self,dimension, name, debug):
         self.debug = debug
         self.name = name
-        self.position = []        # particle position
         self.velocity_i = []          # particle velocity
         self.pos_best_i = []          # best position individual
         self.err_best_i = -1          # best error individual
         self.cost_i = -1               # error individual
-        self.num_dimensions =         self.debug = debug
+        self.num_dimensions = dimension
+        self.debug = debug
 
         self.velocity_i = [0 for i in range(self.num_dimensions)]
         self.position = []
@@ -115,7 +115,6 @@ class Algorithm():
     # optimization function 1
     def evalutate_quad_opt(self, individual):
         x = np.array(individual, dtype=float)
-        #value = 0.5 * np.matmul(np.matmul(x.T, self.A), x) - np.matmul(self.b.T, x)
         value = np.linalg.norm(np.matmul(self.A, x) - self.b, 2)
         return value
 
