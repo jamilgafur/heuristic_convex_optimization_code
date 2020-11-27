@@ -100,6 +100,7 @@ class Algorithm():
         self.history_loc = []
         self.cost_var = args["problems"]
         self.solution = []
+        self.contor_lvl = args["cl"]
         if self.cost_var == 1:
             self.costFunc = self.evalutate_quad_opt
             self.solution = np.matmul(np.linalg.inv(self.A), self.b)
@@ -211,7 +212,7 @@ class Algorithm():
             Xi, Yi = np.meshgrid(xi, yi)
             zi = interpolator(Xi, Yi)
 
-            plt.contourf(Xi, Yi, zi, cmap='RdGy')
+            plt.contourf(Xi, Yi, zi, self.contor_lvl, cmap='RdGy')
             plt.colorbar()
             
             anim.save('GSA_k_{}_prob_{}_pop_{}.gif'.format(self.k, self.cost_var, self.num_particles), writer='imagemagick')

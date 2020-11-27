@@ -81,6 +81,7 @@ class Algorithm():
         self.max_results = []
         self.std = []
         self.solution = []
+        self.contor_lvl = args['cl']
         if args["problems"] == 1:
             self.costFunc = self.evalutate_quad_opt
             self.solution = np.asarray(np.matmul(np.linalg.inv(self.A), self.b))
@@ -171,7 +172,7 @@ class Algorithm():
             Xi, Yi = np.meshgrid(xi, yi)
             zi = interpolator(Xi, Yi)
 
-            plt.contourf(Xi, Yi, zi, cmap='RdGy')
+            plt.contourf(Xi, Yi, zi,self.contor_lvl, cmap='RdGy')
             plt.colorbar()
             anim.save('PSO_k_{}_prob_{}_pop_{}.gif'.format(self.k, self.cost_var, self.num_particles), writer='imagemagick')
         
