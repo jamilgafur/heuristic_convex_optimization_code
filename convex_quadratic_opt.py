@@ -145,6 +145,15 @@ def generate_input(k, size, debug=0):
   b = rng.normal(0, 1, (size, 1)) #Generate normally distributed vector (mean=0, std. dev.=1)
   return (A, b)
   
+
+def nonconvex_generate_input(m , M, B, D):
+    alpha = np.random.uniform(0, M, size=D)
+    beta  = np.random.uniform(1, B, size=D)
+    sigma = np.random.uniform(0,2*np.pi, size=D)
+    
+    return alpha, beta, sigma
+
+
 if __name__ == '__main__':
   
   #Testing A generator method
