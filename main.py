@@ -216,7 +216,9 @@ def build_parser():
   parser.add_argument('-v', '--verbose', dest='debug', type=int, default=-1,
                       help='The log level for the algorithm. Values are [-1, 0, 1, 2]. -1 = no output', 
                       metavar='S')
-  
+  parser.add_argument('-cl', '--contor-level', dest='cl', type=int, default=10,
+                      help='the number of contor levels for gif interpolation', 
+                      metavar='CL')
   parser.add_argument('--output-csv', dest='is_csv_exported', action='store_true',
                       help='If given, csv file(s) will be generated  from runs.')
   
