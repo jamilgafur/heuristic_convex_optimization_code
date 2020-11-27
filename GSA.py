@@ -8,6 +8,9 @@ Created on Thu Nov  5 14:58:39 2020
 from convex_quadratic_opt import generate_input as gi
 import numpy as np
 import statistics 
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+import matplotlib.tri as tri
 
 def to_string():
     return "GSA"
@@ -27,8 +30,11 @@ class Particle:
         self.cost = None
         
         for i in range(0,self.num_dimensions):
-            self.position.append(np.random.normal(0,1))
-        
+            if np.random.random() > .5:
+                self.position.append(np.random.normal(0,1))
+            else:
+                self.position.append(np.random.normal(0,1) * -1)
+            
     # evaluate current fitness
     def evaluate(self,costFunc):
         self.cost = costFunc(self.position)
@@ -77,7 +83,8 @@ class Algorithm():
 
         self.A = None
         self.b = None
-        self.A, self.b = gi(args["k"], args["size"], args["debug"])
+        self.k = args["k"]
+        self.A, self.b = gi(self.k, args["size"], args["debug"])
         self.dimension = args["size"]
         self.best_cost = None                   # best error for group
         self.best_cost_location = []                   # best position for group
@@ -88,22 +95,50 @@ class Algorithm():
         self.min_results = []
         self.max_results = []
         self.std = []
-        self.gravity = 0
-        
-        if args["problems"] == 1:
-          self.costFunc = self.evalutate_quad_opt
+        self.gc = args["gc"]
+        self.gd = args["gd"]
+        self.history_loc = []
+        self.cost_var = args["problems"]
+        self.solution = []
+        if self.cost_var == 1:
+            self.costFunc = self.evalutate_quad_opt
+            self.solution = np.matmul(np.linalg.inv(self.A), self.b)
         else:
-          self.costFunc = self.evalutate_quad_opt
-          
+            self.costFunc = self.evalutate_quad_opt
+            self.solution = np.asarray(np.matmul(np.linalg.inv(self.A), self.b))
+
+        if self.debug and len(self.A) == 2:
+            self.fig = plt.figure()
+            self.ax = plt.axes()
+            self.line, = self.ax.plot([], [], 'o', color='black')
+            
+            
         # establish the swarm
         self.swarm=[]
+        time = []
         for i in range(0,self.num_particles):
             self.swarm.append(Particle(self.dimension, i, self.debug))
+            time.append(self.swarm[i].position)
+        self.history_loc.append(time)
+        
+    def init_animation(self):
+        self.line.set_data([],[])
+        return self.line, 
 
+    def animate(self, time):
+        x = []
+        y =[]
+        for i in self.history_loc[time]:
+            x.append(i[0])
+            y.append(i[1])
+        
+        self.line.set_data(x,y)
+        
+        return self.line, 
     def run(self):
         # begin optimization loop
         for i in range(self.maxiter):
-            self.gravity = np.exp( np.divide(i, self.maxiter)**.5  )  
+            self.gravity = self.gc * np.divide(i, self.maxiter)**self.gd
 
             # cycle through particles in swarm and evaluate fitness
             for particle in self.swarm:
@@ -148,9 +183,41 @@ class Algorithm():
                 print("\tbest:{}".format(self.best_cost))
                 print("\tsmall:{} \tlarge:{}".format(smallest,largest))
                 print("\t-----")
+                if len(self.A) == 2:
+                    time = []
+                    for particle in self.swarm:
+                        time.append(particle.position)
+                    self.history_loc.append(time)
+        
+        if self.debug > 0 and (len(self.A) == 2):
+            self.ax.axis([-2,2,-2,2])
+            anim = FuncAnimation(self.fig, self.animate, init_func=self.init_animation, frames=len(self.history_loc), interval=500, blit=True)
+            
+            npts = 10000
+            x = np.random.uniform(-2, 2, npts)
+            y = np.random.uniform(-2, 2, npts)
+            z = []
+            for r, c in zip(x, y):
+                z.append(self.costFunc([r, c]).item(0))
+               
+            triang = tri.Triangulation(x, y)
+            interpolator = tri.LinearTriInterpolator(triang, z)
+            
+            ngridx = 10000
+            ngridy = 10000
+            xi = np.linspace(-2, 2, ngridx)
+            yi = np.linspace(-2, 2, ngridy)
+            
+            Xi, Yi = np.meshgrid(xi, yi)
+            zi = interpolator(Xi, Yi)
 
-        print(self.min_results)
-        print("\tBest individual seen fitness value: {:0.3f}".format(self.best_cost))
+            plt.contourf(Xi, Yi, zi, cmap='RdGy')
+            plt.colorbar()
+            
+            anim.save('GSA_k_{}_prob_{}_pop_{}.gif'.format(self.k, self.cost_var, self.num_particles), writer='imagemagick')
+            
+
+        print("\nsolution: {}\nsolution_cost:{}\n\n".format(self.best_cost_location, self.costFunc(self.best_cost_location)))
         output_dictionary = {"iterations": [i for i in range(self.maxiter)], "min": self.min_results, "max": self.max_results, "avg": self.avg, "std": self.std}
         return self.best_cost_location, self.costFunc(self.best_cost_location), output_dictionary
 
@@ -158,8 +225,5 @@ class Algorithm():
     # optimization function 1
     def evalutate_quad_opt(self, individual):
         x = np.array(individual, dtype=float)
-        #value = 0.5 * np.matmul(np.matmul(x.T, self.A), x) - np.matmul(self.b.T, x)
         value = np.linalg.norm(np.matmul(self.A, x) - self.b, 2)
         return value
-
-

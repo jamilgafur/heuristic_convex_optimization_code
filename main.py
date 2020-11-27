@@ -177,7 +177,26 @@ def build_parser():
                       help='The standard deviation to use in the gausian distrobution when mutating genes', 
                       metavar='SI')
   #=====================================================================================
-  
+  #Arguments for the Gravity Search Algorithm
+  #=====================================================================================
+  parser.add_argument('-gc', '--grav-constant', dest='gc', type=float, default=1,
+                      help='The gravitiational Constant', 
+                      metavar='GI')
+  parser.add_argument('-gd', '--grav-decay', dest='gd', type=float, default=.5,
+                      help='The gravitiational decay', 
+                      metavar='GD')
+  #=====================================================================================
+  #Arguments for the PSO
+  #=====================================================================================
+  parser.add_argument('-vw', '--vel_weight', dest='vw', type=float, default=.5,
+                      help='The previous velocity weight', 
+                      metavar='VW')
+  parser.add_argument('-sw', '--social_weight', dest='sw', type=float, default=.5,
+                      help='The social particle weighting', 
+                      metavar='SW')
+  parser.add_argument('-cw', '--cognitive_weight', dest='cw', type=float, default=.5,
+                      help='The cognitive particle weighting', 
+                      metavar='CW')
   #General arguments for problems
   #=====================================================================================
   parser.add_argument('-n', '--size', dest='size', type=int, default=5,
