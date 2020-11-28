@@ -101,7 +101,7 @@ class Algorithm():
         self.solution = []
         self.contor_lvl = args["cl"]
         #=========== search problem==========
-        if self.cost_var == 1:
+        if self.cost_var == 0:
             self.costFunc = self.evalutate_quad_opt
             self.A, self.b = gi(args['k'], args["size"], args["debug"])
             self.solution = np.matmul(np.linalg.inv(self.A), self.b)
@@ -236,17 +236,18 @@ class Algorithm():
         x = np.array(individual, dtype=float)
         value = np.linalg.norm(np.matmul(self.A, x) - self.b, 2)
         return value
+    
     # optimization function 2
     def evalutate_noncon_opt(self, x):
+        
         x = np.array(x, dtype=float)
         # 1/2 z^2
         front = .5 * np.multiply(x,x)
         # inner = Beta_i *z + sigma_i
-        inner = np.array([ np.add(np.multiply(self.beta[i], x),self.sigma[i]) for i in range(0,self.m)])
+        inner = np.array([ np.add(np.multiply(self.beta[i], x),self.sigma[i]) for i in range(0,len(x))])
         # inner = cos(inner)
         inner = np.cos(inner)
         # inner = alpha_i * cos(inner)_i
         inner = np.multiply(self.alpha, inner)
         value = front + inner
-        print(value)
         return np.sum(value)
