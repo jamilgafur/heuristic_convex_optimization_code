@@ -32,9 +32,9 @@ class Particle:
         
         for i in range(0,self.num_dimensions):
             if np.random.random() > .5:
-                self.position.append(np.random.normal(0,1))
+                self.position.append(np.random.normal(0,2))
             else:
-                self.position.append(np.random.normal(0,1) * -1)
+                self.position.append(np.random.normal(0,2) * -1)
             
     # evaluate current fitness
     def evaluate(self,costFunc):
@@ -212,8 +212,8 @@ class Algorithm():
             triang = tri.Triangulation(x, y)
             interpolator = tri.LinearTriInterpolator(triang, z)
             
-            ngridx = 10000
-            ngridy = 10000
+            ngridx = 100
+            ngridy = 100
             xi = np.linspace(-2, 2, ngridx)
             yi = np.linspace(-2, 2, ngridy)
             
@@ -249,5 +249,5 @@ class Algorithm():
         inner = np.cos(inner)
         # inner = alpha_i * cos(inner)_i
         inner = np.multiply(self.alpha, inner)
-        value = front + inner
+        value = np.add(front,inner)
         return np.sum(value)
