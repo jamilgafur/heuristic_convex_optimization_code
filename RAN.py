@@ -57,6 +57,7 @@ class Algorithm():
         self.solution_position = None
         self.solution_cost = 1000
         self.contor_lvl = args['cl']
+        self.sample_points = args['rsn']
         if args["problems"] == 1:
             self.costFunc = self.evalutate_quad_opt
             self.solution = np.asarray(np.matmul(np.linalg.inv(self.A), self.b))
@@ -115,8 +116,12 @@ class Algorithm():
             # update position
             for particle in self.swarm:
                 # try 100 different points:
-                for i in range(100):
+                for i in range(self.sample_points):
                     rv = np.random.rand(self.dimension)
+                    for i in range(len(rv)):
+                        if np.random.random() > .5:
+                            rv[i] = -1 * rv[i]
+
                     temp_location = np.add(particle.position, rv)
                     temp_cost = self.costFunc(temp_location)
                     if temp_cost <= particle.cost:
