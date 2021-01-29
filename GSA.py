@@ -6,11 +6,21 @@ Created on Thu Nov  5 14:58:39 2020
 @author: jamilgafur
 """
 from convex_quadratic_opt import generate_input as gi
+from convex_quadratic_opt import nonconvex_generate_input as gnci
 import numpy as np
 import statistics 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import matplotlib.tri as tri
+from itertools import product
+
+
+def get_params_gs():
+  """Get hyperparameter pairs to run through grid search"""
+  gc = [1.0, 0.5, 0.0, -0.5, -1.0]
+  gd = [0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005]
+  options = product(gc,gd)
+  return options
 
 def to_string():
     return "GSA"
@@ -31,9 +41,9 @@ class Particle:
         
         for i in range(0,self.num_dimensions):
             if np.random.random() > .5:
-                self.position.append(np.random.normal(0,1))
+                self.position.append(np.random.normal(0,2))
             else:
-                self.position.append(np.random.normal(0,1) * -1)
+                self.position.append(np.random.normal(0,2) * -1)
             
     # evaluate current fitness
     def evaluate(self,costFunc):
@@ -79,54 +89,61 @@ class Particle:
                 
 class Algorithm():
     def __init__(self, **args):
+        #========command arguments===========
         self.debug = args["debug"]
-
-        self.A = None
-        self.b = None
-        self.k = args["k"]
-        self.A, self.b = gi(self.k, args["size"], args["debug"])
         self.dimension = args["size"]
-        self.best_cost = None                   # best error for group
-        self.best_cost_location = []                   # best position for group
-        self.best_iteration = 0
         self.num_particles = args["pop_size"]
         self.maxiter = args["number_generations"]
+        self.cost_var = args["problems"]
+        self.gc = args["gc"]
+        self.gd = args["gd"]
+        self.k = args['k']
+        #============algorithm inputs========
+        self.swarm=[]
+        self.best_iteration = 0
+        self.best_cost = None 
+        self.best_cost_location = []
         self.avg  = [] 
         self.min_results = []
         self.max_results = []
         self.std = []
-        self.gc = args["gc"]
-        self.gd = args["gd"]
         self.history_loc = []
-        self.cost_var = args["problems"]
         self.solution = []
         self.contor_lvl = args["cl"]
-        if self.cost_var == 1:
+        #=========== search problem==========
+        if self.cost_var == 0:
             self.costFunc = self.evalutate_quad_opt
+            self.A, self.b = gi(args['k'], args["size"], args["debug"])
             self.solution = np.matmul(np.linalg.inv(self.A), self.b)
         else:
-            self.costFunc = self.evalutate_quad_opt
-            self.solution = np.asarray(np.matmul(np.linalg.inv(self.A), self.b))
+            self.costFunc = self.evalutate_noncon_opt
+            self.solution = [0] # temp
+            self.m = args['ncm']
+            self.M = args['ncM']
+            self.b = args['ncb']
+            self.alpha, self.beta , self.sigma = gnci(args['ncm'],args['ncM'],args['ncb'], self.dimension)
 
-        if self.debug and len(self.A) == 2:
+        if self.debug and self.dimension == 2:
             self.fig = plt.figure()
             self.ax = plt.axes()
             self.line, = self.ax.plot([], [], 'o', color='black')
             
-            
-        # establish the swarm
-        self.swarm=[]
-        time = []
+        #=========== populate swarm===========
         for i in range(0,self.num_particles):
             self.swarm.append(Particle(self.dimension, i, self.debug))
-            time.append(self.swarm[i].position)
-        self.history_loc.append(time)
-        
+         
+            
     def init_animation(self):
+        """
+         initalizes the visualzation
+        """
         self.line.set_data([],[])
         return self.line, 
 
     def animate(self, time):
+        """
+        updates the gif for a specific timestep
+        """
         x = []
         y =[]
         for i in self.history_loc[time]:
@@ -136,6 +153,7 @@ class Algorithm():
         self.line.set_data(x,y)
         
         return self.line, 
+    
     def run(self):
         # begin optimization loop
         for i in range(self.maxiter):
@@ -179,18 +197,20 @@ class Algorithm():
             self.max_results.append(round(largest,3))
             self.avg.append(round(sum([particle.cost for particle in self.swarm])/self.num_particles, 3))
             self.std.append(statistics.stdev([particle.cost for particle in self.swarm ]))
+            #=======logging========
             if self.debug > 0:
                 print("\t-----")
                 print("\tbest:{}".format(self.best_cost))
                 print("\tsmall:{} \tlarge:{}".format(smallest,largest))
                 print("\t-----")
-                if len(self.A) == 2:
+                #=======visualization========
+                if self.dimension == 2:
                     time = []
                     for particle in self.swarm:
                         time.append(particle.position)
                     self.history_loc.append(time)
-        
-        if self.debug > 0 and (len(self.A) == 2):
+        #=======generate gif===========
+        if self.debug > 0 and (self.dimension == 2):
             self.ax.axis([-2,2,-2,2])
             anim = FuncAnimation(self.fig, self.animate, init_func=self.init_animation, frames=len(self.history_loc), interval=500, blit=True)
             
@@ -200,12 +220,12 @@ class Algorithm():
             z = []
             for r, c in zip(x, y):
                 z.append(self.costFunc([r, c]).item(0))
-               
             triang = tri.Triangulation(x, y)
+               
             interpolator = tri.LinearTriInterpolator(triang, z)
             
-            ngridx = 10000
-            ngridy = 10000
+            ngridx = 100
+            ngridy = 100
             xi = np.linspace(-2, 2, ngridx)
             yi = np.linspace(-2, 2, ngridy)
             
@@ -214,11 +234,12 @@ class Algorithm():
 
             plt.contourf(Xi, Yi, zi, self.contor_lvl, cmap='RdGy')
             plt.colorbar()
-            
-            anim.save('GSA_k_{}_prob_{}_pop_{}.gif'.format(self.k, self.cost_var, self.num_particles), writer='imagemagick')
-            
-
-        print("\nsolution: {}\nsolution_cost:{}\n\n".format(self.best_cost_location, self.costFunc(self.best_cost_location)))
+            if self.cost_var == 0:
+                anim.save('GSA_prob_{}_pop_{}_k_{}_n_{}_gc_{}_gd_{}_iter_{}.gif'.format(self.cost_var, self.num_particles, self.k, self.dimension, self.gc, self.gd, self.maxiter), writer='imagemagick')
+            else:
+                anim.save('GSA_prob_{}_pop_{}_n_{}_gc_{}_gd_{}_iter_{}_ncm_{}_ncM_{}_ncb_{}.gif'.format(self.cost_var, self.num_particles, self.dimension, self.gc, self.gd, self.maxiter,self.m,self.M ,self.b,), writer='imagemagick')
+        
+        #print("\nsolution: {}\nsolution_cost:{}\n\n".format(self.best_cost_location, self.costFunc(self.best_cost_location)))
         output_dictionary = {"iterations": [i for i in range(self.maxiter)], "min": self.min_results, "max": self.max_results, "avg": self.avg, "std": self.std}
         return self.best_cost_location, self.costFunc(self.best_cost_location), output_dictionary
 
@@ -228,3 +249,17 @@ class Algorithm():
         x = np.array(individual, dtype=float)
         value = np.linalg.norm(np.matmul(self.A, x) - self.b, 2)
         return value
+    
+    # optimization function 2
+    def evalutate_noncon_opt(self, x):  
+        x = np.array(x, dtype=float)
+        # 1/2 z^2
+        front = .5 * np.multiply(x,x)
+        # inner = Beta_i *z + sigma_i
+        inner = np.array([ np.add(np.multiply(self.beta[i], x),self.sigma[i]) for i in range(0,len(x))])
+        # inner = cos(inner)
+        inner = np.cos(inner)
+        # inner = alpha_i * cos(inner)_i
+        inner = np.multiply(self.alpha, inner)
+        value = np.add(front,inner)
+        return np.sum(value)
