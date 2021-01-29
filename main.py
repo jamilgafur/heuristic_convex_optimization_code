@@ -18,6 +18,7 @@ import signal
 #Imports for the algorithms
 import GA as GA 
 import GSA as GSA
+import RAN as RAN
 import PSO as PSO
 #For graphing
 import matplotlib.pyplot as plt
@@ -187,6 +188,12 @@ def build_parser():
   parser.add_argument('-gd', '--grav-decay', dest='gd', type=float, default=.5,
                       help='The gravitiational decay', 
                       metavar='GD')
+  # =====================================================================================
+  # Arguments for the Random Search Algorithm
+  # =====================================================================================
+  parser.add_argument('-rsn', '--random-search-number', dest='rsn', type=int, default=10,
+                      help='The number of random points to sample ')
+
   #=====================================================================================
   #Arguments for the PSO
   #=====================================================================================
@@ -443,6 +450,8 @@ def main():
   
   #Add imported algorithm modules to this list to have them be used.
   for alg in [GSA]:
+    #  for alg in [RAN, GSA, GA, PSO]:
+
     print("running: {}".format(alg))
     setup_alg(options, alg)
     
