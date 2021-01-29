@@ -12,6 +12,15 @@ import statistics
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import matplotlib.tri as tri
+from itertools import product
+
+
+def get_params_gs():
+  """Get hyperparameter pairs to run through grid search"""
+  gc = [1.0, 0.5, 0.0, -0.5, -1.0]
+  gd = [0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005]
+  options = product(gc,gd)
+  return options
 
 def to_string():
     return "GSA"
@@ -88,6 +97,7 @@ class Algorithm():
         self.cost_var = args["problems"]
         self.gc = args["gc"]
         self.gd = args["gd"]
+        self.k = args['k']
         #============algorithm inputs========
         self.swarm=[]
         self.best_iteration = 0
@@ -109,6 +119,8 @@ class Algorithm():
             self.costFunc = self.evalutate_noncon_opt
             self.solution = [0] # temp
             self.m = args['ncm']
+            self.M = args['ncM']
+            self.b = args['ncb']
             self.alpha, self.beta , self.sigma = gnci(args['ncm'],args['ncM'],args['ncb'], self.dimension)
 
         if self.debug and self.dimension == 2:
@@ -208,8 +220,8 @@ class Algorithm():
             z = []
             for r, c in zip(x, y):
                 z.append(self.costFunc([r, c]).item(0))
-               
             triang = tri.Triangulation(x, y)
+               
             interpolator = tri.LinearTriInterpolator(triang, z)
             
             ngridx = 100
@@ -222,11 +234,12 @@ class Algorithm():
 
             plt.contourf(Xi, Yi, zi, self.contor_lvl, cmap='RdGy')
             plt.colorbar()
-            
-            anim.save('GSA_prob_{}_pop_{}.gif'.format(self.cost_var, self.num_particles), writer='imagemagick')
-            
+            if self.cost_var == 0:
+                anim.save('GSA_prob_{}_pop_{}_k_{}_n_{}_gc_{}_gd_{}_iter_{}.gif'.format(self.cost_var, self.num_particles, self.k, self.dimension, self.gc, self.gd, self.maxiter), writer='imagemagick')
+            else:
+                anim.save('GSA_prob_{}_pop_{}_n_{}_gc_{}_gd_{}_iter_{}_ncm_{}_ncM_{}_ncb_{}.gif'.format(self.cost_var, self.num_particles, self.dimension, self.gc, self.gd, self.maxiter,self.m,self.M ,self.b,), writer='imagemagick')
         
-        print("\nsolution: {}\nsolution_cost:{}\n\n".format(self.best_cost_location, self.costFunc(self.best_cost_location)))
+        #print("\nsolution: {}\nsolution_cost:{}\n\n".format(self.best_cost_location, self.costFunc(self.best_cost_location)))
         output_dictionary = {"iterations": [i for i in range(self.maxiter)], "min": self.min_results, "max": self.max_results, "avg": self.avg, "std": self.std}
         return self.best_cost_location, self.costFunc(self.best_cost_location), output_dictionary
 
@@ -238,8 +251,7 @@ class Algorithm():
         return value
     
     # optimization function 2
-    def evalutate_noncon_opt(self, x):
-        
+    def evalutate_noncon_opt(self, x):  
         x = np.array(x, dtype=float)
         # 1/2 z^2
         front = .5 * np.multiply(x,x)

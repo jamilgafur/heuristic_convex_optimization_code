@@ -67,6 +67,7 @@ class Algorithm():
         #========user input=======
         self.debug = args["debug"]
         self.cost_var = args["problems"]
+        self.k = args['k']
         self.contor_lvl = args["cl"]        
         self.vel_weight =  args["vw"]
         self.social_weight =  args["cw"]
@@ -167,18 +168,21 @@ class Algorithm():
             triang = tri.Triangulation(x, y)
             interpolator = tri.LinearTriInterpolator(triang, z)
             
-            ngridx = 10000
-            ngridy = 10000
+            ngridx = 100
+            ngridy = 100
             xi = np.linspace(-2, 2, ngridx)
             yi = np.linspace(-2, 2, ngridy)
             
             Xi, Yi = np.meshgrid(xi, yi)
             zi = interpolator(Xi, Yi)
 
-            plt.contourf(Xi, Yi, zi,self.contor_lvl, cmap='RdGy')
+            plt.contourf(Xi, Yi, zi, self.contor_lvl, cmap='RdGy')
             plt.colorbar()
-            anim.save('PSO_prob_{}_pop_{}.gif'.format(self.cost_var, self.num_particles), writer='imagemagick')
-        
+            if self.cost_var == 0:
+                anim.save('PSO_prob_{}_pop_{}_k_{}_n_{}_sw_{}_cw_{}_vw_{}_iter_{}.gif'.format(self.cost_var, self.num_particles, self.k, self.dimension, self.social_weight, self.cognitive_weight, self.vel_weight, self.maxiter), writer='imagemagick')
+            else:
+                anim.save('PSO_prob_{}_pop_{}_n_{}_sw_{}_cw_{}_vw_{}_iter_{}_ncm_{}_ncM_{}_ncb_{}.gif'.format(self.cost_var, self.num_particles, self.dimension, self.social_weight, self.cognitive_weight,self.vel_weight, self.maxiter,self.m,self.M ,self.b,), writer='imagemagick')
+    
         print("\nsolution: {}\nsolution_cost:{}".format(self.pos_best_g, self.costFunc(self.pos_best_g)))
         output_dictionary = {"iterations": [i for i in range(self.maxiter)], "min": self.min_results, "max": self.max_results, "avg": self.avg, "std": self.std}
         return self.pos_best_g, self.costFunc(self.pos_best_g), output_dictionary

@@ -91,7 +91,10 @@ def grid_search(is_threaded, k, size, alg_import):
   try:
     if is_threaded:
       for x in options:
-        params = {'size': size, 'k':k, 'mu':x[0], 'sigma':x[1], 'alpha':x[2], 'indpb':x[3], 'tournsize':x[4], 'cxpb':x[5], 'mutpb':x[6]}
+        # for GA
+        #params = {'size': size, 'k':k, 'mu':x[0], 'sigma':x[1], 'alpha':x[2], 'indpb':x[3], 'tournsize':x[4], 'cxpb':x[5], 'mutpb':x[6]}
+        # for GSA
+        params = {'size': size, 'k':k, 'gc':x[0], 'gd':x[1], 'number_generations':10, 'problems':0, 'cl':10}
         futures[executor.apply_async(_thread_caller, (params, alg_import.Algorithm))] = x
         print(f'\rSubmitted {submitted} / {total} jobs', end = '\r')
         submitted += 1
@@ -128,8 +131,7 @@ def grid_search(is_threaded, k, size, alg_import):
     executor.join()
                 
               
-  print("Best values from grid search evaluation is:\n\tMu:%.3f\n\tSigma:%.3f\n\tAlpha:%.3f\n\tIndpb:%.3f\n\tTournsize:%i\n\tCxpb:%.3f\n\tMutpb:%.3f"
-        % best_values)
+  #print("Best values from grid search evaluation is:\n\tMu:%.3f\n\tSigma:%.3f\n\tAlpha:%.3f\n\tIndpb:%.3f\n\tTournsize:%i\n\tCxpb:%.3f\n\tMutpb:%.3f"% best_values)
   print("Best parameters had fitness: %.3f" % (best_fitness))
   
   
@@ -203,14 +205,24 @@ def build_parser():
                       help='The size of the square matrices', 
                       metavar='N')
   #=====================================================================================
-  
-  #Arguments for Quadratic Optimization problem
+    #Arguments for Quadratic Optimization problem
   #=====================================================================================
   parser.add_argument('-k', '--condition-number', dest='k', type=int, default=3,
                       help='The condition number that we want to approximate for A matrix', 
                       metavar='K')
   #=====================================================================================
-  
+    #Arguments for Quadratic Optimization problem
+  #=====================================================================================
+  parser.add_argument('-ncm', '--ncm', dest='ncm', type=int, default=3,
+                      help='idk', 
+                      metavar='ncm')
+  parser.add_argument('-ncb', '--ncb', dest='ncb', type=int, default=3,
+                      help='idk', 
+                      metavar='ncb')
+  parser.add_argument('-ncM', '--ncM', dest='ncM', type=int, default=3,
+                      help='idk', 
+                      metavar='ncM')
+  #=====================================================================================  
   #Output arguments
   #=====================================================================================
   parser.add_argument('-v', '--verbose', dest='debug', type=int, default=-1,
@@ -265,7 +277,7 @@ def run_alg(options, alg_class):
     A dictionary of arrays for iterations, min, max, average, and std. dev. for each iteration.
 
   """
-  if options.get('problems') == 2:
+  if options.get('problems') == 1:
     alg = alg_class(problem=1, **options)
     _, _, logbook =  alg.run()
   elif options.get('problems') == 0:
@@ -301,17 +313,20 @@ def save_csv_multi(iterations, output_dict, alg_import, seed):
       for i, mi, ma, a, s in zip(iterations, mins, maxs, avgs, stds):
         writer.writerow([key, i, mi, ma, a, s])
   
-def save_csv_single(iterations, output_dict, key, alg_import):
-  name = key.replace("=", "_")
-  name = name.replace(",", '_')
-  name = name.replace(" ", '')
-  with open(r'csvs/' + alg_import.to_string() + "_iteration_" + str(len(iterations)) + "_" + name 
-          + "_single.csv", 'w+', newline='\n', encoding='utf-8') as csv_file:
+def save_csv_single(iterations, output_dict, options, alg_import):
+  if alg_import.to_string() == "GSA":
+      filename = "GSA_prob_{}_pop_{}_k_{}_n_{}_gc_{}_gd_{}_iter_{}.csv".format(options.problems, options.pop_size, options.k, options.size, options.gc,options.gd, options.number_generations)
+  if alg_import.to_string() == "PSO":
+      filename = "PSO_prob_{}_pop_{}_k_{}_n_{}_sw_{}_cw_{}_vw_{}_iter_{}.csv".format(options.problems, options.pop_size, options.k, options.size, options.sw,options.cw, options.vw, options.number_generations)
+      
+  if alg_import.to_string() == "GA":
+      filename = ""
+  with open(r'csvs/' +filename, 'w+', newline='\n', encoding='utf-8') as csv_file:
     writer = csv.writer(csv_file)
-    writer.writerow(["Key", "Iteration", "Min", "Max", "Average", "Std. Dev."])
+    writer.writerow(["Iteration", "Min", "Max", "Average", "Std. Dev."])
     _, mins, maxs, avgs, stds = output_dict.values()
     for i, mi, ma, a, s in zip(iterations, mins, maxs, avgs, stds):
-      writer.writerow([key, i, mi, ma, a, s])
+      writer.writerow([i, mi, ma, a, s])
 #==============================================================================================================
   
 def setup_alg(options, alg_import):
@@ -391,7 +406,7 @@ def setup_alg(options, alg_import):
         plot_single_data(iterations, min_results, "k=" + str(options.k) + ", n=" + str(options.size))
         
       if options.is_csv_exported:
-          save_csv_single(iterations, logbook, "pop=" + str(options.pop_size) +", k=" + str(options.k) + ", n=" + str(options.size)+ ", seed="+str(options.seed), alg_import)
+          save_csv_single(iterations, logbook, options, alg_import)
       
 def main():
   # build the parser for implementation
@@ -427,7 +442,7 @@ def main():
   np.random.seed(options.seed)
   
   #Add imported algorithm modules to this list to have them be used.
-  for alg in [PSO, GSA, GA]:
+  for alg in [GSA]:
     print("running: {}".format(alg))
     setup_alg(options, alg)
     
