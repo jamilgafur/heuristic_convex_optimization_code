@@ -8,23 +8,25 @@ Convex quadratic optimization (or linear regression).
 @author: Cory Kromer-Edwards
 """
 
-import numpy.matlib 
-import numpy as np 
+import matplotlib.pyplot as plt
+import numpy as np
 import math
-#import random
 
-#random.seed(1234)
-#np.random.seed(1234)
+# import random
 
-#Setting random.seed or np.random.seed sets the seed globally
-#which would affect all files that import these while running.
-#To avoid this, we create random states for each file that are then
-#used for randomness maintaining between generating data for problems
-#and running the alogorithms themselves.
+# random.seed(1234)
+# np.random.seed(1234)
+
+# Setting random.seed or np.random.seed sets the seed globally
+# which would affect all files that import these while running.
+# To avoid this, we create random states for each file that are then
+# used for randomness maintaining between generating data for problems
+# and running the alogorithms themselves.
 rng = np.random.RandomState(1234)
 
+
 def generate_D(k, size):
-  """
+    """
   Generate matrix D such that:
     with diagonal entries dii = exp((ln κ)ui) 
     with ui uniformly distributed over [0, 1].
@@ -41,22 +43,23 @@ def generate_D(k, size):
   diagonal matrix D
 
   """
-  
-  D = np.matlib.identity(size, dtype = float)
-  
-  #Since D is initially an identity matrix, we can multiply each row by
-  #the d_{i,i} equation and it will only affect d_{i,i}
-  def calc_diagonal_entries(x):
-    ui = rng.uniform(0.0, 1.0)
-    
-    #exp((ln k) * ui)
-    return x * math.exp(math.log(k) * ui)
-    
-  D = np.apply_along_axis(calc_diagonal_entries, axis=1, arr=D)
-  return D
+
+    D = np.identity(size, dtype=float)
+
+    # Since D is initially an identity matrix, we can multiply each row by
+    # the d_{i,i} equation and it will only affect d_{i,i}
+    def calc_diagonal_entries(x):
+        ui = rng.uniform(0.0, 1.0)
+
+        # exp((ln k) * ui)
+        return x * math.exp(math.log(k) * ui)
+
+    D = np.apply_along_axis(calc_diagonal_entries, axis=1, arr=D)
+    return D
+
 
 def generate_Q(size):
-  """
+    """
   Generate matrix Q such that:
     Z = pseudo-random size x size matrix
     R = upper triangular matrix with nonzero values
@@ -72,13 +75,14 @@ def generate_Q(size):
   Q matrix
 
   """
-  
-  Z = rng.normal(0, 1, (size, size))      #Random size x size matrix
-  Q, R = np.linalg.qr(Z)
-  return Q
+
+    Z = rng.normal(0, 1, (size, size))  # Random size x size matrix
+    Q, R = np.linalg.qr(Z)
+    return Q
+
 
 def generate_A(k, size, debug=0):
-  """
+    """
   Generates A matrix such that:
     A = (Q^T)DQ
     and
@@ -99,33 +103,34 @@ def generate_A(k, size, debug=0):
   A matrix
 
   """
-  
-  Q = generate_Q(size)
-  D = generate_D(k, size)
-  A = np.matmul(np.matmul(Q.transpose(), D), Q)
-  
-  #Get the condition number calculated from A to check against input k
-  #The 3 options are the same out to about 13 decimal places
-  #||A||_2||A^-1||_2
-  
-  #Option 1 to calc conditional number
-  #k_check = np.linalg.norm(A, 2) * np.linalg.norm(np.linalg.inv(A), 2)
-  
-  #Option 2 to calc conditional number
-  #eigs = np.linalg.eigvals(A)
-  #k_check = np.max(eigs)/np.min(eigs)
-  
-  #Option 3 to calc conditional number
-  k_check = np.linalg.cond(A)
-   
-  if debug >= 1:
-    print("Input condition number: %r" % (k))
-    print("Caclulated (approximate) condition number: %r" % (k_check))
-  
-  return A
+
+    Q = generate_Q(size)
+    D = generate_D(k, size)
+    A = np.matmul(np.matmul(Q.transpose(), D), Q)
+
+    # Get the condition number calculated from A to check against input k
+    # The 3 options are the same out to about 13 decimal places
+    # ||A||_2||A^-1||_2
+
+    # Option 1 to calc conditional number
+    # k_check = np.linalg.norm(A, 2) * np.linalg.norm(np.linalg.inv(A), 2)
+
+    # Option 2 to calc conditional number
+    # eigs = np.linalg.eigvals(A)
+    # k_check = np.max(eigs)/np.min(eigs)
+
+    # Option 3 to calc conditional number
+    k_check = np.linalg.cond(A)
+
+    if debug >= 1:
+        print("Input condition number: %r" % (k))
+        print("Caclulated (approximate) condition number: %r" % (k_check))
+
+    return A
+
 
 def generate_input(k, size, debug=0):
-  """
+    """
   Generate A matrix and b vector
 
   Parameters
@@ -141,24 +146,48 @@ def generate_input(k, size, debug=0):
 
   """
 
-  A = generate_A(k, size, debug)
-  b = rng.normal(0, 1, (size, 1)) #Generate normally distributed vector (mean=0, std. dev.=1)
-  return (A, b)
-  
+    A = generate_A(k, size, debug)
+    b = rng.normal(0, 1, (size, 1))  # Generate normally distributed vector (mean=0, std. dev.=1)
+    return A, b
 
-def nonconvex_generate_input(m , M, B, D):
-    alpha = np.random.uniform(0, M, size=D)
-    beta  = np.random.uniform(1, B, size=D)
-    sigma = np.random.uniform(0,2*np.pi, size=D)
-    
-    return alpha, beta, sigma
+
+def nonconvex_generate_input(size, m, M, b):
+    # Generate Q
+    Q = generate_Q(size)
+
+    alpha = np.random.uniform(0, M, size=(m, 1))
+    beta = np.random.uniform(1, b**2, size=(m, 1))
+    gamma = np.random.uniform(0, 2 * np.pi, size=(m, 1))
+
+    return Q, alpha, beta, gamma
+
+def preview_nonconv(size, m, M, b):
+    z = np.linspace(-10, 10, 10000)
+    Q = generate_Q(size)
+    plt.style.use('seaborn-whitegrid')
+    fig = plt.figure()
+    ax = plt.axes()
+    g_j_minimums = []
+    for j in range(size):
+        alpha = np.random.uniform(0, M, size=(m, 1))
+        beta = np.random.uniform(1, b ** 2, size=(m, 1))
+        gamma = np.random.uniform(0, 2 * np.pi, size=(m, 1))
+        ax.plot(z, g_j(z, alpha, beta, gamma))
+        g_j_minimums.append(g_j(0, alpha, beta, gamma))
+
+    print(f"g_j global minimizers: {g_j_minimums}")
+    print(f"f(x) global minimizer: {sum(g_j_minimums)}")
+    glob_z = np.array([0 for _ in range(size)])
+    print(f"Minimum X: {np.matmul(Q.T, glob_z)}")
+    plt.show()
+
+
+def g_j(z, alpha, beta, gamma):
+    return (0.5 * (z**2)) + np.sum(alpha * np.cos((beta * z) + gamma))
+
 
 
 if __name__ == '__main__':
-  
-  #Testing A generator method
-  generate_A(3.0, 5)
-  
-  
-  
-  
+    # Testing A generator method
+    # generate_A(3.0, 5)
+    preview_nonconv(5, 3, 1, 1)
