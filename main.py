@@ -188,7 +188,7 @@ def build_parser():
     # =====================================================================================
     # Arguments for the Gravity Search Algorithm
     # =====================================================================================
-    parser.add_argument('-gc', '--grav-constant', dest='gc', type=float, default=.7
+    parser.add_argument('-gc', '--grav-constant', dest='gc', type=float, default=.7,
                         help='The gravitiational Constant',
                         metavar='GI')
     parser.add_argument('-gd', '--grav-decay', dest='gd', type=float, default=.9,
