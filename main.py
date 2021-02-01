@@ -72,6 +72,7 @@ def build_parser():
                         help='The standard deviation to use in the gausian distrobution when mutating genes',
                         metavar='SI')
     # =====================================================================================
+
     # Arguments for the Gravity Search Algorithm
     # =====================================================================================
     parser.add_argument('-gc', '--grav-constant', dest='gc', type=float, default=.7,
@@ -81,12 +82,13 @@ def build_parser():
                         help='The gravitiational decay',
                         metavar='GD')
     # =====================================================================================
+
     # Arguments for the Random Search Algorithm
     # =====================================================================================
     parser.add_argument('-rsn', '--random-search-number', dest='rsn', type=int, default=10,
                         help='The number of random points to sample ')
-
     # =====================================================================================
+
     # Arguments for the PSO
     # =====================================================================================
     parser.add_argument('-vw', '--vel_weight', dest='vw', type=float, default=.5,
@@ -98,18 +100,21 @@ def build_parser():
     parser.add_argument('-cw', '--cognitive_weight', dest='cw', type=float, default=.5,
                         help='The cognitive particle weighting',
                         metavar='CW')
+
     # General arguments for problems
     # =====================================================================================
     parser.add_argument('-n', '--size', dest='size', type=int, default=5,
                         help='The size of the square matrices',
                         metavar='N')
     # =====================================================================================
+
     # Arguments for Quadratic Optimization problem
     # =====================================================================================
     parser.add_argument('-k', '--condition-number', dest='k', type=int, default=3,
                         help='The condition number that we want to approximate for A matrix',
                         metavar='K')
     # =====================================================================================
+
     # Arguments for Nonconvex Optimization problem
     # =====================================================================================
     parser.add_argument('-ncm', '--ncm', dest='ncm', type=int, default=3,
@@ -122,6 +127,7 @@ def build_parser():
                         help='Upper limit for random numbers generates for alpha',
                         metavar='ncM')
     # =====================================================================================
+
     # Output arguments
     # =====================================================================================
     parser.add_argument('-v', '--verbose', dest='debug', type=int, default=-1,
@@ -204,13 +210,14 @@ def plot_multi_data(num_particles, data_dict, alg_import):
     plt.ylabel("Error")
     plt.savefig(alg_import.to_string() + '.svg', bbox_extra_artists=(legend,), bbox_inches='tight')
 
-def save_csv_multi(num_particles, output_dict, alg_import, seed, problem):
+
+def save_csv_multi(num_particles, output_dict, alg_import, seed, problem, key_header):
     with open(f'csvs/{alg_import.to_string()}_seed_{seed}_prob_{problem + 1}_all.csv',
               'w+', newline='\n', encoding='utf-8') as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerow(["Key"] + [f"loss p{i + 1}" for i in range(num_particles)])
+        writer.writerow(key_header + [f"loss p{i + 1}" for i in range(num_particles)])
         for key, loss_values in output_dict.items():
-            writer.writerow([key] + loss_values)
+            writer.writerow(key.split(',') + loss_values)
 
 
 def save_csv_single(loss_values, options, alg_import, key, problem):
@@ -270,7 +277,7 @@ def setup_alg(options, alg_import):
             exit(1)
 
         for problem in problem_runs:
-            print(f"\tRunning problem: {problem}")
+            print(f"\tRunning problem: {problem + 1}")
             print(f"\tThreading is: {'Enabled' if options.is_threaded else 'Disabled'}")
             if options.use_pred_inputs:
                 run_num = 1
@@ -304,7 +311,8 @@ def setup_alg(options, alg_import):
                                 for k in k_values:
                                     options.k = k
                                     options.size = n
-                                    key = f"k={k}, n={n}"
+                                    key = f"{n},{k}"
+                                    key_header = ["n", "k"]
 
                                     if options.is_threaded:
                                         futures[executor.apply_async(run_alg, (problem, vars(options), alg_import.Algorithm))] = key
@@ -323,7 +331,8 @@ def setup_alg(options, alg_import):
                                             options.ncM = M
                                             options.ncb = b
                                             options.size = n
-                                            key = f"m={m}, M={M}, b={b}, n={n}"
+                                            key = f"{n},{m},{M},{b}"
+                                            key_header = ["n", "m", "M", "b"]
 
                                             if options.is_threaded:
                                                 futures[executor.apply_async(run_alg, (problem, vars(options), alg_import.Algorithm))] = key
@@ -361,7 +370,7 @@ def setup_alg(options, alg_import):
                         plot_multi_data(options.num_particles, log_dict, alg_import)
 
                     if options.is_csv_exported:
-                        save_csv_multi(options.num_particles, log_dict, alg_import, str(options.seed), problem)
+                        save_csv_multi(options.num_particles, log_dict, alg_import, str(options.seed), problem, key_header)
             else:
                 loss_values = run_alg(problem, vars(options), alg_import.Algorithm)
 

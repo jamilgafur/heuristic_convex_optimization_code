@@ -62,15 +62,15 @@ class Algorithm:
             self.A, self.b = gi(self.k, args["size"], args["debug"])
             self.costFunc = self.evalutate_quad_opt
             self.solution = np.asarray(np.matmul(np.linalg.inv(self.A), self.b))
+            if self.debug and len(self.A) == 2:
+                self.fig = plt.figure()
+                self.ax = plt.axes()
+                self.line, = self.ax.plot([], [], 'o', color='black')
         else:
             self.costFunc = self.evalutate_noncon_opt
             self.Q, self.alpha, self.beta, self.gamma = gnci(args["size"], args['ncm'], args['ncM'], args['ncb'])
             self.solution = f_vect(np.array([[0 for _ in range(self.dimension)]]).T, self.Q, self.alpha, self.beta, self.gamma)
 
-        if self.debug and len(self.A) == 2:
-            self.fig = plt.figure()
-            self.ax = plt.axes()
-            self.line, = self.ax.plot([], [], 'o', color='black')
 
         # establish the swarm
         self.history_loc = []
