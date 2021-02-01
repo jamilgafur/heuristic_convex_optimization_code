@@ -6,7 +6,6 @@ Created on Sun Oct 11 15:55:47 2020
 """
 
 import random
-import numpy.matlib
 import numpy as np
 
 from deap import base
@@ -21,7 +20,7 @@ from convex_quadratic_opt import f_vect
 # Set up for numpy warnings within the fitness evaluation methods
 # By default, warnings are just printed to stderr rather than thrown
 # We want warnings to be thrown as warnings to be able to catch them later.
-numpy.seterr(all='warn')
+np.seterr(all='warn')
 import warnings
 
 # To turn input dictionary into namespace for easier access
@@ -108,10 +107,10 @@ class Algorithm:
         self.toolbox = base.Toolbox()
 
         self.stats = tools.Statistics(key=self._stat_func)
-        self.stats.register("avg", numpy.mean)
-        self.stats.register("std", numpy.std)
-        self.stats.register("min", numpy.min)
-        self.stats.register("max", numpy.max)
+        self.stats.register("avg", np.mean)
+        self.stats.register("std", np.std)
+        self.stats.register("min", np.min)
+        self.stats.register("max", np.max)
 
         # if not pool:
         #  self.map_func = lambda func, pop, **args: [func(x, **args) for x in pop]
