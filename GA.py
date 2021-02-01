@@ -16,6 +16,7 @@ from deap import tools
 # Imports for problems
 from convex_quadratic_opt import generate_input as cqo_gen_input
 from convex_quadratic_opt import nonconvex_generate_input as nonc_gen_input
+from convex_quadratic_opt import f_vect
 
 # Set up for numpy warnings within the fitness evaluation methods
 # By default, warnings are just printed to stderr rather than thrown
@@ -196,31 +197,9 @@ class Algorithm:
         return ind.fitness.values[0]
 
     # optimization function 2
-    def _evalutate_noncon_opt(self, x):
-        x = np.array(x, dtype=float)
-        z = np.matmul(self.Q, x)
-        # sum(1/2 z^2)
-        front = 0.5 * np.matmul(z, z.T)
-        # print(front)
-
-        # alpha * cos(beta * (Q * x)^T + gamma)^T
-        a = self.beta.sum() * z.sum()
-        # print(a)
-        b = a + self.gamma
-        r = np.matmul(self.alpha.T, np.cos(b))
-        out = (front + r)[0, 0]
-
-        return (out,)
-
-        # inner = Beta_i *z + gamma_i
-        # inner = np.array([np.add(np.multiply(self.beta[i], x), self.gamma[i]) for i in range(0, len(x))])
-        # inner = cos(inner)
-        # inner = np.cos(inner)
-        # inner = alpha_i * cos(inner)_i
-        # inner = np.multiply(self.alpha, inner)
-        # value = np.add(front, inner)
-
-        # return np.sum(value)
+    def _evalutate_noncon_opt(self, individual):
+        x = np.array([individual]).T
+        return (f_vect(x, self.Q, self.alpha, self.beta, self.gamma),)
 
     # Fitness evaluation methods (must return iterable)
     # Remember, we want to minimize these functions, so to hurt them we need to return
@@ -273,16 +252,17 @@ class Algorithm:
         self.b = b
         self.evaluate_fitness = self._evaluatate_quad_opt
 
-    def _init_noncon_opt(self, m, M, B):
-        Q, alpha, beta, gamma = nonc_gen_input(self.size, m, M, B)
-        if self.size < 20 and self.debug >= 0:
-            print("Exact minimizer for problem is: %r" % (np.asarray(np.matmul(np.linalg.inv(A), b))))
+    def _init_noncon_opt(self, m, M, b):
+        Q, alpha, beta, gamma = nonc_gen_input(self.size, m, M, b)
 
         self.Q = Q
         self.alpha = alpha
         self.beta = beta
         self.gamma = gamma
         self.evaluate_fitness = self._evalutate_noncon_opt
+
+        if self.debug >= 0:
+            print(f"Exact minimum value for problem is: {f_vect(np.array([[0 for _ in range(self.size)]]).T, self.Q, self.alpha, self.beta, self.gamma)}")
 
     # =====================================================================================
 
@@ -356,7 +336,9 @@ class Algorithm:
             hof.update(pop)
             record = self.stats.compile(pop) if self.stats else {}
             logbook.record(gen=g + 1, **record)
-            loss_values = [ind.fitness.values[0] for ind in pop]
+
+            # Fitness values are being minimized by negating them. We need to first make them positive before returning.
+            loss_values = [-ind.fitness.values[0] for ind in pop]
 
         if self.debug >= 0:
             print("Convex quadratic optimization problem results:")

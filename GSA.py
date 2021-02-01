@@ -7,6 +7,7 @@ Created on Thu Nov  5 14:58:39 2020
 """
 from convex_quadratic_opt import generate_input as gi
 from convex_quadratic_opt import nonconvex_generate_input as gnci
+from convex_quadratic_opt import f_vect
 import numpy as np
 import statistics
 import matplotlib.pyplot as plt
@@ -125,7 +126,7 @@ class Algorithm:
             self.m = args['ncm']
             self.M = args['ncM']
             self.b = args['ncb']
-            self.alpha, self.beta, self.sigma = gnci(args['ncm'], args['ncM'], args['ncb'], self.dimension)
+            self.Q, self.alpha, self.beta, self.gamma = gnci(args["size"], args['ncm'], args['ncM'], args['ncb'])
 
         if self.debug and self.dimension == 2:
             self.fig = plt.figure()
@@ -166,8 +167,9 @@ class Algorithm:
             for particle in self.swarm:
                 particle.evaluate(self.costFunc)
 
-            smallest = min([particle.cost for particle in self.swarm])
-            largest = max([particle.cost for particle in self.swarm])
+            loss_values = [particle.cost for particle in self.swarm]
+            smallest = min(loss_values)
+            largest = max(loss_values)
 
             if self.best_cost == None or smallest < self.best_cost:
                 self.best_cost = smallest
@@ -256,7 +258,7 @@ class Algorithm:
             # print("\nsolution: {}\nsolution_cost:{}\n\n".format(self.best_cost_location, self.costFunc(self.best_cost_location)))
         output_dictionary = {"iterations": [i for i in range(self.maxiter)], "min": self.min_results,
                              "max": self.max_results, "avg": self.avg, "std": self.std}
-        return self.best_cost_location, self.costFunc(self.best_cost_location), output_dictionary
+        return self.best_cost_location, self.costFunc(self.best_cost_location), output_dictionary, loss_values
 
     # optimization function 1
     def evalutate_quad_opt(self, individual):
@@ -266,14 +268,5 @@ class Algorithm:
 
     # optimization function 2
     def evalutate_noncon_opt(self, x):
-        x = np.array(x, dtype=float)
-        # 1/2 z^2
-        front = .5 * np.multiply(x, x)
-        # inner = Beta_i *z + sigma_i
-        inner = np.array([np.add(np.multiply(self.beta[i], x), self.sigma[i]) for i in range(0, len(x))])
-        # inner = cos(inner)
-        inner = np.cos(inner)
-        # inner = alpha_i * cos(inner)_i
-        inner = np.multiply(self.alpha, inner)
-        value = np.add(front, inner)
-        return np.sum(value)
+        x = np.array([x]).T
+        return f_vect(x, self.Q, self.alpha, self.beta, self.gamma)

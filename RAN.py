@@ -9,6 +9,8 @@ Created on Mon Dec 21 14:31:37 2020
 # Adapted from https://nathanrooy.github.io/posts/2016-08-17/simple-particle-swarm-optimization-with-python/
 
 from convex_quadratic_opt import generate_input as gi
+from convex_quadratic_opt import nonconvex_generate_input as gnci
+from convex_quadratic_opt import f_vect
 import numpy as np
 import statistics
 import matplotlib.pyplot as plt
@@ -39,10 +41,6 @@ class Particle:
 class Algorithm:
     def __init__(self, **args):
         self.debug = args["debug"]
-        self.A = None
-        self.b = None
-        self.k = args["k"]
-        self.A, self.b = gi(self.k, args["size"], args["debug"])
         self.cost_var = args["problems"]
 
         self.vel_weight = args["vw"]
@@ -60,11 +58,14 @@ class Algorithm:
         self.contor_lvl = args['cl']
         self.sample_points = args['rsn']
         if args["problems"] == 0:
+            self.k = args["k"]
+            self.A, self.b = gi(self.k, args["size"], args["debug"])
             self.costFunc = self.evalutate_quad_opt
             self.solution = np.asarray(np.matmul(np.linalg.inv(self.A), self.b))
         else:
-            self.costFunc = self.evalutate_quad_opt
-            self.solution = np.asarray(np.matmul(np.linalg.inv(self.A), self.b))
+            self.costFunc = self.evalutate_noncon_opt
+            self.Q, self.alpha, self.beta, self.gamma = gnci(args["size"], args['ncm'], args['ncM'], args['ncb'])
+            self.solution = f_vect(np.array([[0 for _ in range(self.dimension)]]).T, self.Q, self.alpha, self.beta, self.gamma)
 
         if self.debug and len(self.A) == 2:
             self.fig = plt.figure()
@@ -98,23 +99,6 @@ class Algorithm:
     def run(self):
         # begin optimization loop
         for i in range(self.maxiter):
-            smallest = min([particle.cost for particle in self.swarm])
-            self.min_results.append(smallest)
-            largest = max([particle.cost for particle in self.swarm])
-            self.max_results.append(largest)
-            self.avg.append(sum([particle.cost for particle in self.swarm]) / self.num_particles)
-            self.std.append(statistics.stdev([particle.cost for particle in self.swarm]))
-            if self.debug > 0:
-                print("\t-----")
-                # err_best_g is never defined
-                # print("\tbest:{}".format(self.err_best_g))
-                print("\tsmall:{} \tlarge:{}".format(smallest, largest))
-                print("\t-----")
-                if len(self.A) == 2:
-                    time = []
-                    for particle in self.swarm:
-                        time.append(particle.position)
-                    self.history_loc.append(time)
             # update position
             for particle in self.swarm:
                 # try 100 different points:
@@ -132,6 +116,25 @@ class Algorithm:
                     if particle.cost < self.solution_cost:
                         self.solution_position = particle.position
                         self.solution_cost = particle.cost
+
+            loss_values = [particle.cost for particle in self.swarm]
+            smallest = min(loss_values)
+            self.min_results.append(smallest)
+            largest = max(loss_values)
+            self.max_results.append(largest)
+            self.avg.append(sum([particle.cost for particle in self.swarm]) / self.num_particles)
+            self.std.append(statistics.stdev([particle.cost for particle in self.swarm]))
+            if self.debug > 0:
+                print("\t-----")
+                # err_best_g is never defined
+                # print("\tbest:{}".format(self.err_best_g))
+                print("\tsmall:{} \tlarge:{}".format(smallest, largest))
+                print("\t-----")
+                if len(self.A) == 2:
+                    time = []
+                    for particle in self.swarm:
+                        time.append(particle.position)
+                    self.history_loc.append(time)
 
         if self.debug > 0 and (len(self.A) == 2):
             self.ax.axis([-2, 2, -2, 2])
@@ -164,10 +167,15 @@ class Algorithm:
             print("\nsolution: {}\nsolution_cost:{}".format(self.solution_position, self.costFunc(self.solution_position)))
         output_dictionary = {"iterations": [i for i in range(self.maxiter)], "min": self.min_results,
                              "max": self.max_results, "avg": self.avg, "std": self.std}
-        return self.solution_position, self.costFunc(self.solution_position), output_dictionary
+        return self.solution_position, self.costFunc(self.solution_position), output_dictionary, loss_values
 
     # optimization function 1
     def evalutate_quad_opt(self, individual):
         x = np.array(individual, dtype=float)
         value = np.linalg.norm(np.matmul(self.A, x) - self.b, 2)
         return value
+
+    # optimization function 2
+    def evalutate_noncon_opt(self, x):
+        x = np.array([x]).T
+        return f_vect(x, self.Q, self.alpha, self.beta, self.gamma)

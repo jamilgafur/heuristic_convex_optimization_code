@@ -2,6 +2,7 @@
 
 from convex_quadratic_opt import generate_input as gi
 from convex_quadratic_opt import nonconvex_generate_input as gnci
+from convex_quadratic_opt import f_vect
 
 import numpy as np
 import statistics
@@ -97,7 +98,7 @@ class Algorithm:
             self.costFunc = self.evalutate_noncon_opt
             self.solution = [0]  # temp
             self.m = args['ncm']
-            self.alpha, self.beta, self.gamma = gnci(args['ncm'], args['ncM'], args['ncb'], self.dimension)
+            self.Q, self.alpha, self.beta, self.gamma = gnci(args["size"], args['ncm'], args['ncM'], args['ncb'])
 
         if self.debug and self.dimension == 2:
             self.fig = plt.figure()
@@ -217,15 +218,5 @@ class Algorithm:
 
     # optimization function 2
     def evalutate_noncon_opt(self, x):
-        x = np.array(x, dtype=float)
-        # 1/2 z^2
-        front = .5 * np.multiply(x, x)
-        # inner = Beta_i *z + sigma_i
-        inner = np.array([np.add(np.multiply(self.beta[i], x), self.gamma[i]) for i in range(0, len(x))])
-        # inner = cos(inner)
-        inner = np.cos(inner)
-        # inner = alpha_i * cos(inner)_i
-        inner = np.multiply(self.alpha, inner)
-        value = np.add(front, inner)
-
-        return np.sum(value)
+        x = np.array([x]).T
+        return f_vect(x, self.Q, self.alpha, self.beta, self.gamma)

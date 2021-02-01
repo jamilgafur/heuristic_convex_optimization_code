@@ -150,16 +150,18 @@ def generate_input(k, size, debug=0):
     b = rng.normal(0, 1, (size, 1))  # Generate normally distributed vector (mean=0, std. dev.=1)
     return A, b
 
-
+# Problem 2: Highly non-convex optimization
+# ===========================================================================================================
 def nonconvex_generate_input(size, m, M, b):
     # Generate Q
     Q = generate_Q(size)
 
-    alpha = np.random.uniform(0, M, size=(m, 1))
-    beta = np.random.uniform(1, b**2, size=(m, 1))
-    gamma = np.random.uniform(0, 2 * np.pi, size=(m, 1))
+    alpha = np.random.uniform(0, M, size=(m, size))
+    beta = np.random.uniform(1, b ** 2, size=(m, size))
+    gamma = np.random.uniform(0, 2 * np.pi, size=(m, size))
 
     return Q, alpha, beta, gamma
+
 
 def preview_nonconv(size, m, M, b):
     z = np.linspace(-10, 10, 10000)
@@ -168,26 +170,94 @@ def preview_nonconv(size, m, M, b):
     fig = plt.figure()
     ax = plt.axes()
     g_j_minimums = []
+    alphas = []
+    betas = []
+    gammas = []
     for j in range(size):
         alpha = np.random.uniform(0, M, size=(m, 1))
+        alphas.append(alpha)
         beta = np.random.uniform(1, b ** 2, size=(m, 1))
+        betas.append(beta)
         gamma = np.random.uniform(0, 2 * np.pi, size=(m, 1))
-        ax.plot(z, g_j(z, alpha, beta, gamma))
-        g_j_minimums.append(g_j(0, alpha, beta, gamma))
+        gammas.append(gamma)
+        y = []
+        for n in range(len(z)):
+            y.append(g_j_test(z[n], alpha, beta, gamma))
+
+        ax.plot(z, y)
+        g_j_minimums.append(g_j_test(0, alpha, beta, gamma))
 
     print(f"g_j global minimizers: {g_j_minimums}")
     print(f"f(x) global minimizer: {sum(g_j_minimums)}")
     glob_z = np.array([0 for _ in range(size)])
     print(f"Minimum X: {np.matmul(Q.T, glob_z)}")
+
+    # Testing vectorized functions
+    alphas = np.array(alphas).reshape((size, m)).T
+    betas = np.array(betas).reshape((size, m)).T
+    gammas = np.array(gammas).reshape((size, m)).T
+    new_z = np.array([[0 for _ in range(size)]]).T
+    print(f"new Z shape: {new_z.shape}")
+    print(f"Shape of Alpha: {alphas.shape}")
+    g_vect = g_j_vect_test(new_z, alphas, betas, gammas)
+    print(g_vect)
+    print(f"Vectorized f(x) (using g_j_vect) minimum: {np.sum(g_vect)}")
+    print(f"Vectorized f(x) (using f_vect) minimum: {f_vect_test(new_z, alphas, betas, gammas)}")
     plt.show()
 
 
-def g_j(z, alpha, beta, gamma):
-    return (0.5 * (z**2)) + np.sum(alpha * np.cos((beta * z) + gamma))
+def g_j_test(z, alpha, beta, gamma):
+    """
+    Unvectorized g_j()
+    :param z: Integer value
+    :param alpha: ndarray with shape (m, 1)
+    :param beta: ndarray with shape (m, 1)
+    :param gamma: ndarray with shape (m, 1)
+    :return: g_j(z_j)
+    """
+    return (0.5 * (z ** 2)) + np.sum(alpha * np.cos((beta * z) + gamma))
 
 
+def g_j_vect_test(z, alpha, beta, gamma):
+    """
+    Vectorized g_j()
+    :param z: ndarray with shape (n, 1)
+    :param alpha: ndarray with shape (m, n)
+    :param beta: ndarray with shape (m, n)
+    :param gamma: ndarray with shape (m, n)
+    :return: all g_j(z_j) for j from 1 to n
+    """
+    return (0.5 * np.matmul(z.T, z)) + np.sum(np.multiply(alpha, np.cos((np.matmul(beta, z) + gamma))), axis=0)
+
+
+def f_vect_test(z, alpha, beta, gamma):
+    """
+    Vectorized f(x) (for testing in preview_nonconv method)
+    It is provided with z instead like other test functions as if z is precomputed
+    :param z: ndarray with shape (n, 1)
+    :param alpha: ndarray with shape (m, n)
+    :param beta: ndarray with shape (m, n)
+    :param gamma: ndarray with shape (m, n)
+    :return: f(x)
+    """
+    return ((0.5 * np.matmul(z.T, z)) + np.sum(np.multiply(alpha, np.cos((np.matmul(beta, z) + gamma)))))[0, 0]
+
+
+def f_vect(x, Q, alpha, beta, gamma):
+    """
+    Problem 2's f(x) function calculation.
+    :param x: ndarray with shape (n, 1)
+    :param Q: ndarray with shape (n, n)
+    :param alpha: ndarray with shape (m, n)
+    :param beta: ndarray with shape (m, n)
+    :param gamma: ndarray with shape (m, n)
+    :return: f(x)
+    """
+    z = np.matmul(Q, x)
+    return ((0.5 * np.matmul(z.T, z)) + np.sum(np.multiply(alpha, np.cos((np.matmul(beta, z) + gamma)))))[0, 0]
+# ===========================================================================================================
 
 if __name__ == '__main__':
     # Testing A generator method
     # generate_A(3.0, 5)
-    preview_nonconv(5, 3, 1, 1)
+    preview_nonconv(5, 3, 5, 3)
