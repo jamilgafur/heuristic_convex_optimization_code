@@ -60,14 +60,14 @@ class Algorithm:
         if args["problems"] == 0:
             self.k = args["k"]
             self.A, self.b = gi(self.k, args["size"], args["debug"])
-            self.costFunc = self.evalutate_quad_opt
+            self.costFunc = self.evaluate_quad_opt
             self.solution = np.asarray(np.matmul(np.linalg.inv(self.A), self.b))
             if self.debug and len(self.A) == 2:
                 self.fig = plt.figure()
                 self.ax = plt.axes()
                 self.line, = self.ax.plot([], [], 'o', color='black')
         else:
-            self.costFunc = self.evalutate_noncon_opt
+            self.costFunc = self.evaluate_noncon_opt
             self.Q, self.alpha, self.beta, self.gamma = gnci(args["size"], args['ncm'], args['ncM'], args['ncb'])
             self.solution = f_vect(np.array([[0 for _ in range(self.dimension)]]).T, self.Q, self.alpha, self.beta, self.gamma)
 
@@ -101,14 +101,14 @@ class Algorithm:
         for i in range(self.maxiter):
             # update position
             for particle in self.swarm:
-                # try 100 different points:
-                for i in range(self.sample_points):
-                    rv = np.random.rand(self.dimension)
-                    for i in range(len(rv)):
+                # try different points:
+                for _ in range(self.sample_points):
+                    ran_vector = np.random.rand(self.dimension)
+                    for ran_value in range(len(ran_vector)):
                         if np.random.random() > .5:
-                            rv[i] = -1 * rv[i]
+                            ran_vector[ran_value] = -1 * ran_vector[ran_value]
 
-                    temp_location = np.add(particle.position, rv)
+                    temp_location = np.add(particle.position, ran_vector)
                     temp_cost = self.costFunc(temp_location)
                     if temp_cost <= particle.cost:
                         particle.position = temp_location
@@ -170,12 +170,12 @@ class Algorithm:
         return self.solution_position, self.costFunc(self.solution_position), output_dictionary, loss_values
 
     # optimization function 1
-    def evalutate_quad_opt(self, individual):
+    def evaluate_quad_opt(self, individual):
         x = np.array(individual, dtype=float)
         value = np.linalg.norm(np.matmul(self.A, x) - self.b, 2)
         return value
 
     # optimization function 2
-    def evalutate_noncon_opt(self, x):
+    def evaluate_noncon_opt(self, x):
         x = np.array([x]).T
         return f_vect(x, self.Q, self.alpha, self.beta, self.gamma)
