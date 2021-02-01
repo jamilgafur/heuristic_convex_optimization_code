@@ -27,7 +27,7 @@ class Particle:
         self.s_weight = social
         self.c_weight = cognitive
         self.v_weight = vel
-        self.velocity_i = [0 for i in range(self.num_dimensions)]
+        self.velocity_i = [.5 for i in range(self.num_dimensions)]
         self.position = []
         for i in range(0, self.num_dimensions):
             if np.random.random() > .5:
@@ -97,7 +97,7 @@ class Algorithm:
             self.costFunc = self.evalutate_noncon_opt
             self.solution = [0]  # temp
             self.m = args['ncm']
-            self.alpha, self.beta, self.gamma = gnci(args['ncm'], args['ncM'], args['ncb'], self.dimension)
+            self.Q, self.alpha, self.beta, self.gamma = gnci(self.dimension, args['ncm'], args['ncM'], args['ncb'])
 
         if self.debug and self.dimension == 2:
             self.fig = plt.figure()
@@ -131,7 +131,7 @@ class Algorithm:
             for particle in self.swarm:
                 particle.evaluate(self.costFunc)
                 # determine if current particle is the best (globally)
-                if self.err_best_g == None or particle.cost_i < self.err_best_g:
+                if self.err_best_g is None or particle.cost_i < self.err_best_g :
                     self.pos_best_g = particle.position
                     self.err_best_g = particle.cost_i
 
@@ -218,14 +218,14 @@ class Algorithm:
     # optimization function 2
     def evalutate_noncon_opt(self, x):
         x = np.array(x, dtype=float)
-        # 1/2 z^2
-        front = .5 * np.multiply(x, x)
-        # inner = Beta_i *z + sigma_i
-        inner = np.array([np.add(np.multiply(self.beta[i], x), self.gamma[i]) for i in range(0, len(x))])
-        # inner = cos(inner)
-        inner = np.cos(inner)
-        # inner = alpha_i * cos(inner)_i
-        inner = np.multiply(self.alpha, inner)
-        value = np.add(front, inner)
-
-        return np.sum(value)
+        z = np.matmul(self.Q, x)
+        # sum(1/2 z^2)
+        front = 0.5 * np.matmul(z, z.T)
+        # print(front)
+        # alpha * cos(beta * (Q * x)^T + gamma)^T
+        a = self.beta.sum() * z.sum()
+        # print(a)
+        b = a + self.gamma
+        r = np.matmul(self.alpha.T, np.cos(b))
+        out = (front + r)[0, 0]
+        return out

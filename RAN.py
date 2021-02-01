@@ -164,7 +164,8 @@ class Algorithm:
             print("\nsolution: {}\nsolution_cost:{}".format(self.solution_position, self.costFunc(self.solution_position)))
         output_dictionary = {"iterations": [i for i in range(self.maxiter)], "min": self.min_results,
                              "max": self.max_results, "avg": self.avg, "std": self.std}
-        return self.solution_position, self.costFunc(self.solution_position), output_dictionary
+        return self.solution_position, self.costFunc(self.solution_position), output_dictionary, \
+               [particle.cost for particle in self.swarm]
 
     # optimization function 1
     def evalutate_quad_opt(self, individual):

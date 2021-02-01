@@ -125,7 +125,7 @@ class Algorithm:
             self.m = args['ncm']
             self.M = args['ncM']
             self.b = args['ncb']
-            self.alpha, self.beta, self.sigma = gnci(args['ncm'], args['ncM'], args['ncb'], self.dimension)
+            self.Q, self.alpha, self.beta, self.gamma = gnci(self.dimension, args['ncm'], args['ncM'], args['ncb'])
 
         if self.debug and self.dimension == 2:
             self.fig = plt.figure()
@@ -169,7 +169,7 @@ class Algorithm:
             smallest = min([particle.cost for particle in self.swarm])
             largest = max([particle.cost for particle in self.swarm])
 
-            if self.best_cost == None or smallest < self.best_cost:
+            if self.best_cost is None or smallest < self.best_cost:
                 self.best_cost = smallest
                 self.best_iteration = i
 
@@ -194,6 +194,7 @@ class Algorithm:
                 particle.calc_velocity()
                 particle.update_position()
 
+            loss_values = [particle.cost for particle in self.swarm]
             self.min_results.append(round(smallest, 3))
             self.max_results.append(round(largest, 3))
             self.avg.append(round(sum([particle.cost for particle in self.swarm]) / self.num_particles, 3))
@@ -256,7 +257,7 @@ class Algorithm:
             # print("\nsolution: {}\nsolution_cost:{}\n\n".format(self.best_cost_location, self.costFunc(self.best_cost_location)))
         output_dictionary = {"iterations": [i for i in range(self.maxiter)], "min": self.min_results,
                              "max": self.max_results, "avg": self.avg, "std": self.std}
-        return self.best_cost_location, self.costFunc(self.best_cost_location), output_dictionary
+        return self.best_cost_location, self.costFunc(self.best_cost_location), output_dictionary, loss_values
 
     # optimization function 1
     def evalutate_quad_opt(self, individual):
@@ -267,13 +268,14 @@ class Algorithm:
     # optimization function 2
     def evalutate_noncon_opt(self, x):
         x = np.array(x, dtype=float)
-        # 1/2 z^2
-        front = .5 * np.multiply(x, x)
-        # inner = Beta_i *z + sigma_i
-        inner = np.array([np.add(np.multiply(self.beta[i], x), self.sigma[i]) for i in range(0, len(x))])
-        # inner = cos(inner)
-        inner = np.cos(inner)
-        # inner = alpha_i * cos(inner)_i
-        inner = np.multiply(self.alpha, inner)
-        value = np.add(front, inner)
-        return np.sum(value)
+        z = np.matmul(self.Q, x)
+        # sum(1/2 z^2)
+        front = 0.5 * np.matmul(z, z.T)
+        # print(front)
+        # alpha * cos(beta * (Q * x)^T + gamma)^T
+        a = self.beta.sum() * z.sum()
+        # print(a)
+        b = a + self.gamma
+        r = np.matmul(self.alpha.T, np.cos(b))
+        out = (front + r)[0, 0]
+        return out

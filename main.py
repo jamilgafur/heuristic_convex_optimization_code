@@ -475,10 +475,11 @@ def main():
     np.random.seed(options.seed)
 
     # Add imported algorithm modules to this list to have them be used.
-    for alg in [GA]:
+    for alg in [GSA, GA, RAN, PSO]:
         # for alg in [GA, PSO, RAN, GSA]:
         print("running: {}".format(alg.to_string()))
         setup_alg(options, alg)
+        print("=============")
 
 
 if __name__ == '__main__':
