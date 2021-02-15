@@ -14,7 +14,6 @@ import matplotlib.tri as tri
 def to_string():
     return "PSO"
 
-
 class Particle:
     def __init__(self, dimension, name, debug, social, cognitive, vel):
         self.debug = debug
@@ -53,7 +52,7 @@ class Particle:
 
             vel_cognitive = self.c_weight * r1 * (self.pos_best_i[i] - self.position[i])
             vel_social = self.s_weight * r2 * (pos_best_g[i] - self.position[i])
-            self.velocity_i[i] = self.v_weight * self.velocity_i[i] + vel_cognitive + vel_social
+            self.velocity_i[i] = np.round(self.v_weight * self.velocity_i[i] + vel_cognitive + vel_social,2)
 
     # update the particle position based off new velocity updates
     def update_position(self):
@@ -67,10 +66,9 @@ class Particle:
 
 
 class Algorithm:
-    def __init__(self, **args):
+    def __init__(self, problem, **args):
         # ========user input=======
         self.debug = args["debug"]
-        self.cost_var = args["problems"]
         self.k = args['k']
         self.contor_lvl = args["cl"]
         self.vel_weight = args["vw"]
@@ -88,17 +86,21 @@ class Algorithm:
         self.std = []
         self.solution = []
         self.history_loc = []
-
         # ========problem input=======
-        if self.cost_var == 0:
+        if problem == 0:
             self.costFunc = self.evalutate_quad_opt
-            self.A, self.b = gi(args['k'], args["size"], args["debug"])
-            self.solution = np.matmul(np.linalg.inv(self.A), self.b)
-        else:
+            self.A = args['p1'][0]
+            self.b = args['p1'][1]
+        elif problem == 1:
             self.costFunc = self.evalutate_noncon_opt
-            self.solution = [0]  # temp
-            self.m = args['ncm']
-            self.Q, self.alpha, self.beta, self.gamma = gnci(args["size"], args['ncm'], args['ncM'], args['ncb'])
+            self.solution = -1000  # temp
+            self.Q = args['p2'][0]
+            self.alpha = args['p2'][1]
+            self.beta = args['p2'][2]
+            self.gamma = args['p2'][3]
+        else:
+            raise ValueError('parameter "problem" not provided')
+
 
         if self.debug and self.dimension == 2:
             self.fig = plt.figure()
@@ -109,7 +111,6 @@ class Algorithm:
         for i in range(0, self.num_particles):
             self.swarm.append(
                 Particle(self.dimension, i, self.debug, self.social_weight, self.cognitive_weight, self.vel_weight))
-
     def init_animation(self):
         self.line.set_data([], [])
         return self.line,
@@ -208,6 +209,7 @@ class Algorithm:
             print("\nsolution: {}\nsolution_cost:{}".format(self.pos_best_g, self.costFunc(self.pos_best_g)))
         output_dictionary = {"iterations": [i for i in range(self.maxiter)], "min": self.min_results,
                              "max": self.max_results, "avg": self.avg, "std": self.std}
+
         return self.pos_best_g, self.costFunc(self.pos_best_g), output_dictionary, loss_values
 
     # optimization function 1

@@ -31,6 +31,11 @@ import csv
 from progress_bar import print_progress_bar
 from grid_search import grid_search
 
+# for optimization
+from convex_quadratic_opt import generate_input as gi
+from convex_quadratic_opt import nonconvex_generate_input as gnci
+from convex_quadratic_opt import f_vect
+
 
 def build_parser():
     """
@@ -223,15 +228,12 @@ def save_csv_multi(num_particles, output_dict, alg_import, seed, problem, key_he
 def save_csv_single(loss_values, options, alg_import, key, problem):
     if alg_import.to_string() == "GSA":
         filename = "GSA_prob_{}_pop_{}_{}_gc_{}_gd_{}_iter_{}.csv".format(problem,
-                                                                                options.num_particles, key,
-                                                                                options.gc, options.gd,
-                                                                                options.number_generations)
+                                                                          options.num_particles, key,
+                                                                          options.gc, options.gd,
+                                                                          options.number_generations)
     if alg_import.to_string() == "PSO":
         filename = "PSO_prob_{}_pop_{}_{}_sw_{}_cw_{}_vw_{}_iter_{}.csv".format(problem,
-                                                                                    options.num_particles, key,
-                                                                                    options.sw,
-                                                                                    options.cw, options.vw,
-                                                                                    options.number_generations)
+                                                                                options.number_generations)
 
     if alg_import.to_string() == "GA":
         filename = "GA_prob_{}_pop_{}_{}.csv".format(problem, options.num_particles, key)
@@ -279,10 +281,28 @@ def setup_alg(options, alg_import):
         for problem in problem_runs:
             print(f"\tRunning problem: {problem + 1}")
             print(f"\tThreading is: {'Enabled' if options.is_threaded else 'Disabled'}")
+
+            # inital can be overwritten
+            p1 = []
+            alpha, beta = gi(options.k, options.size, options.debug)
+            p1.append(alpha)
+            p1.append(beta)
+
+            options.p1 = p1
+
+            p2 = []
+            q_mat, alpha, beta, gamma = gnci(options.size, options.ncm, options.ncM,
+                                             options.ncb)
+            p2.append(q_mat)
+            p2.append(alpha)
+            p2.append(beta)
+            p2.append(gamma)
+            options.p2 = p2
+
             if options.use_pred_inputs:
                 run_num = 1
                 # for steps in [100, 1000, 10000, 100000]:
-                for steps in [10000]:
+                for steps in [1000]:
                     options.number_generations = steps
                     log_dict = dict()
                     if options.is_threaded:
@@ -311,11 +331,20 @@ def setup_alg(options, alg_import):
                                 for k in k_values:
                                     options.k = k
                                     options.size = n
+
+                                    options.p1 = []
+                                    p1 = []
+                                    alpha, beta = gi(options.k, options.size, options.debug)
+                                    p1.append(alpha)
+                                    p1.append(beta)
+
+                                    options.p1 = p1
                                     key = f"{n},{k}"
                                     key_header = ["n", "k"]
 
                                     if options.is_threaded:
-                                        futures[executor.apply_async(run_alg, (problem, vars(options), alg_import.Algorithm))] = key
+                                        futures[executor.apply_async(run_alg, (
+                                            problem, vars(options), alg_import.Algorithm))] = key
                                         print(f'\rSubmitted {submitted} / {total} jobs', end='\r')
                                         submitted += 1
                                     else:
@@ -331,11 +360,21 @@ def setup_alg(options, alg_import):
                                             options.ncM = M
                                             options.ncb = b
                                             options.size = n
+                                            p2 = []
+                                            q_mat, alpha, beta, gamma = gnci(options.size, options.ncm, options.ncM,
+                                                                             options.ncb)
+                                            p2.append(q_mat)
+                                            p2.append(alpha)
+                                            p2.append(beta)
+                                            p2.append(gamma)
+                                            options.p2 = p2
+                                            options.p1 = []
                                             key = f"{n},{m},{M},{b}"
                                             key_header = ["n", "m", "M", "b"]
 
                                             if options.is_threaded:
-                                                futures[executor.apply_async(run_alg, (problem, vars(options), alg_import.Algorithm))] = key
+                                                futures[executor.apply_async(run_alg, (
+                                                    problem, vars(options), alg_import.Algorithm))] = key
                                                 print(f'\rSubmitted {submitted} / {total} jobs', end='\r')
                                                 submitted += 1
                                             else:
@@ -370,7 +409,8 @@ def setup_alg(options, alg_import):
                         plot_multi_data(options.num_particles, log_dict, alg_import)
 
                     if options.is_csv_exported:
-                        save_csv_multi(options.num_particles, log_dict, alg_import, str(options.seed), problem, key_header)
+                        save_csv_multi(options.num_particles, log_dict, alg_import, str(options.seed), problem,
+                                       key_header)
             else:
                 loss_values = run_alg(problem, vars(options), alg_import.Algorithm)
 
@@ -379,7 +419,6 @@ def setup_alg(options, alg_import):
                         key = key = f"k={options.k}, n={options.size}"
                     else:
                         key = f"m={options.ncm}, M={options.ncM}, b={options.ncb}, n={options.size}"
-
                     save_csv_single(loss_values, options, alg_import, key, problem)
 
 
@@ -394,7 +433,7 @@ def main():
 
     # Add imported algorithm modules to this list to have them be used.
     # for alg in [GA]:
-    for alg in [GA, PSO, RAN, GSA]:
+    for alg in [PSO, GA, GSA, RAN]:
         print("running: {}".format(alg.to_string()))
         setup_alg(options, alg)
 

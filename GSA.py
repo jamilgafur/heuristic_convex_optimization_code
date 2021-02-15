@@ -27,7 +27,6 @@ def get_params_gs():
 def to_string():
     return "GSA"
 
-
 class Particle:
     def __init__(self, dimension, name, debug):
         self.debug = debug
@@ -93,7 +92,7 @@ class Particle:
 
 
 class Algorithm:
-    def __init__(self, **args):
+    def __init__(self, problem, **args):
         # ========command arguments===========
         self.debug = args["debug"]
         self.dimension = args["size"]
@@ -115,18 +114,21 @@ class Algorithm:
         self.history_loc = []
         self.solution = []
         self.contor_lvl = args["cl"]
-        # =========== search problem==========
-        if self.cost_var == 0:
+        # ========problem input=======
+        if problem == 0:
             self.costFunc = self.evalutate_quad_opt
-            self.A, self.b = gi(args['k'], args["size"], args["debug"])
+            self.A = args['p1'][0]
+            self.b = args['p1'][1]
             self.solution = np.matmul(np.linalg.inv(self.A), self.b)
-        else:
+        elif problem == 1:
             self.costFunc = self.evalutate_noncon_opt
             self.solution = [0]  # temp
-            self.m = args['ncm']
-            self.M = args['ncM']
-            self.b = args['ncb']
-            self.Q, self.alpha, self.beta, self.gamma = gnci(args["size"], args['ncm'], args['ncM'], args['ncb'])
+            self.Q = args['p2'][0]
+            self.alpha = args['p2'][1]
+            self.beta = args['p2'][2]
+            self.gamma = args['p2'][3]
+        else:
+            raise ValueError('parameter "problem" not provided')
 
         if self.debug and self.dimension == 2:
             self.fig = plt.figure()

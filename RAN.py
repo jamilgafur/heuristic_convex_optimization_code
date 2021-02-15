@@ -39,7 +39,7 @@ class Particle:
 
 
 class Algorithm:
-    def __init__(self, **args):
+    def __init__(self, problem,  **args):
         self.debug = args["debug"]
         self.cost_var = args["problems"]
 
@@ -57,21 +57,27 @@ class Algorithm:
         self.solution_cost = 1000
         self.contor_lvl = args['cl']
         self.sample_points = args['rsn']
-        if args["problems"] == 0:
-            self.k = args["k"]
-            self.A, self.b = gi(self.k, args["size"], args["debug"])
-            self.costFunc = self.evaluate_quad_opt
-            self.solution = np.asarray(np.matmul(np.linalg.inv(self.A), self.b))
-            if self.debug and len(self.A) == 2:
-                self.fig = plt.figure()
-                self.ax = plt.axes()
-                self.line, = self.ax.plot([], [], 'o', color='black')
+
+        # ========problem input=======
+        if problem == 0:
+            self.costFunc = self.evalutate_quad_opt
+            self.A = args['p1'][0]
+            self.b = args['p1'][1]
+            self.solution = np.matmul(np.linalg.inv(self.A), self.b)
+        elif problem == 1:
+            self.costFunc = self.evalutate_noncon_opt
+            self.solution = [0]  # temp
+            self.Q = args['p2'][0]
+            self.alpha = args['p2'][1]
+            self.beta = args['p2'][2]
+            self.gamma = args['p2'][3]
         else:
-            self.costFunc = self.evaluate_noncon_opt
-            self.Q, self.alpha, self.beta, self.gamma = gnci(args["size"], args['ncm'], args['ncM'], args['ncb'])
-            self.solution = f_vect(np.array([[0 for _ in range(self.dimension)]]).T, self.Q, self.alpha, self.beta, self.gamma)
+            raise ValueError('parameter "problem" not provided')
 
-
+        if self.debug and self.dimension == 2:
+            self.fig = plt.figure()
+            self.ax = plt.axes()
+            self.line, = self.ax.plot([], [], 'o', color='black')
         # establish the swarm
         self.history_loc = []
         self.swarm = []
@@ -170,12 +176,12 @@ class Algorithm:
         return self.solution_position, self.costFunc(self.solution_position), output_dictionary, loss_values
 
     # optimization function 1
-    def evaluate_quad_opt(self, individual):
+    def evalutate_quad_opt(self, individual):
         x = np.array(individual, dtype=float)
         value = np.linalg.norm(np.matmul(self.A, x) - self.b, 2)
         return value
 
     # optimization function 2
-    def evaluate_noncon_opt(self, x):
+    def evalutate_noncon_opt(self, x):
         x = np.array([x]).T
         return f_vect(x, self.Q, self.alpha, self.beta, self.gamma)
