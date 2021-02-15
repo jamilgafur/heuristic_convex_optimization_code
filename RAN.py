@@ -63,10 +63,9 @@ class Algorithm:
             self.costFunc = self.evalutate_quad_opt
             self.A = args['p1'][0]
             self.b = args['p1'][1]
-            self.solution = np.matmul(np.linalg.inv(self.A), self.b)
         elif problem == 1:
             self.costFunc = self.evalutate_noncon_opt
-            self.solution = [0]  # temp
+            self.solution = -1000  # temp
             self.Q = args['p2'][0]
             self.alpha = args['p2'][1]
             self.beta = args['p2'][2]
@@ -173,7 +172,7 @@ class Algorithm:
             print("\nsolution: {}\nsolution_cost:{}".format(self.solution_position, self.costFunc(self.solution_position)))
         output_dictionary = {"iterations": [i for i in range(self.maxiter)], "min": self.min_results,
                              "max": self.max_results, "avg": self.avg, "std": self.std}
-        return self.solution_position, self.costFunc(self.solution_position), output_dictionary, loss_values
+        return self.solution_position, self.solution_cost, output_dictionary, loss_values
 
     # optimization function 1
     def evalutate_quad_opt(self, individual):
