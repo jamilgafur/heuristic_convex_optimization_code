@@ -14,6 +14,7 @@ import matplotlib.tri as tri
 def to_string():
     return "PSO"
 
+
 class Particle:
     def __init__(self, dimension, name, debug, social, cognitive, vel):
         self.debug = debug
@@ -52,7 +53,7 @@ class Particle:
 
             vel_cognitive = self.c_weight * r1 * (self.pos_best_i[i] - self.position[i])
             vel_social = self.s_weight * r2 * (pos_best_g[i] - self.position[i])
-            self.velocity_i[i] = np.round(self.v_weight * self.velocity_i[i] + vel_cognitive + vel_social,2)
+            self.velocity_i[i] = np.round(self.v_weight * self.velocity_i[i] + vel_cognitive + vel_social, 2)
 
     # update the particle position based off new velocity updates
     def update_position(self):
@@ -76,7 +77,7 @@ class Algorithm:
         self.cognitive_weight = args["sw"]
         self.dimension = args["size"]
         self.num_particles = args["num_particles"]
-        self.maxiter = args["number_generations"]
+        self.max_Iterations = args["number_generations"]
         # =======Algorithm var=========
         self.err_best_g = None  # best error for group
         self.pos_best_g = []  # best position for group
@@ -88,19 +89,23 @@ class Algorithm:
         self.history_loc = []
         # ========problem input=======
         if problem == 0:
-            self.costFunc = self.evalutate_quad_opt
-            self.A = args['p1'][0]
-            self.b = args['p1'][1]
+            key_problem1 = "0_k{}_n{}_b{}_m{}_M{}".format(args['k'], args['size'], args['ncb'], args['ncm'],
+                                                          args['ncM'])
+            self.costFunc = self.evaluate_quad_opt
+            self.A = args['dic'][key_problem1][0]
+            self.b = args['dic'][key_problem1][1]
+
         elif problem == 1:
-            self.costFunc = self.evalutate_noncon_opt
+            self.costFunc = self.evaluate_nonconvex_optimizer
             self.solution = -1000  # temp
-            self.Q = args['p2'][0]
-            self.alpha = args['p2'][1]
-            self.beta = args['p2'][2]
-            self.gamma = args['p2'][3]
+            key_problem2 = "1_k{}_n{}_b{}_m{}_M{}".format(args['k'], args['size'], args['ncb'], args['ncm'],
+                                                          args['ncM'])
+            self.Q = args['dic'][key_problem2][0]
+            self.alpha = args['dic'][key_problem2][1]
+            self.beta = args['dic'][key_problem2][2]
+            self.gamma = args['dic'][key_problem2][3]
         else:
             raise ValueError('parameter "problem" not provided')
-
 
         if self.debug and self.dimension == 2:
             self.fig = plt.figure()
@@ -111,6 +116,7 @@ class Algorithm:
         for i in range(0, self.num_particles):
             self.swarm.append(
                 Particle(self.dimension, i, self.debug, self.social_weight, self.cognitive_weight, self.vel_weight))
+
     def init_animation(self):
         self.line.set_data([], [])
         return self.line,
@@ -128,12 +134,12 @@ class Algorithm:
 
     def run(self):
         # begin optimization loop
-        for i in range(self.maxiter):
+        for i in range(self.max_Iterations):
             # cycle through particles in swarm and evaluate fitness
             for particle in self.swarm:
                 particle.evaluate(self.costFunc)
                 # determine if current particle is the best (globally)
-                if self.err_best_g == None or particle.cost_i < self.err_best_g:
+                if self.err_best_g is None or particle.cost_i < self.err_best_g:
                     self.pos_best_g = particle.position
                     self.err_best_g = particle.cost_i
 
@@ -191,7 +197,7 @@ class Algorithm:
                                                                                               self.social_weight,
                                                                                               self.cognitive_weight,
                                                                                               self.vel_weight,
-                                                                                              self.maxiter),
+                                                                                              self.max_Iterations),
                           writer='imagemagick')
             else:
                 anim.save(
@@ -201,24 +207,24 @@ class Algorithm:
                                                                                                         self.social_weight,
                                                                                                         self.cognitive_weight,
                                                                                                         self.vel_weight,
-                                                                                                        self.maxiter,
+                                                                                                        self.max_Iterations,
                                                                                                         self.m, self.M,
                                                                                                         self.b, ),
                     writer='imagemagick')
 
             print("\nsolution: {}\nsolution_cost:{}".format(self.pos_best_g, self.costFunc(self.pos_best_g)))
-        output_dictionary = {"iterations": [i for i in range(self.maxiter)], "min": self.min_results,
+        output_dictionary = {"iterations": [i for i in range(self.max_Iterations)], "min": self.min_results,
                              "max": self.max_results, "avg": self.avg, "std": self.std}
 
         return self.pos_best_g, self.costFunc(self.pos_best_g), output_dictionary, loss_values
 
     # optimization function 1
-    def evalutate_quad_opt(self, individual):
+    def evaluate_quad_opt(self, individual):
         x = np.array(individual, dtype=float)
         value = np.linalg.norm(np.matmul(self.A, x) - self.b, 2)
         return value
 
     # optimization function 2
-    def evalutate_noncon_opt(self, x):
+    def evaluate_nonconvex_optimizer(self, x):
         x = np.array([x]).T
         return f_vect(x, self.Q, self.alpha, self.beta, self.gamma)

@@ -116,17 +116,21 @@ class Algorithm:
         self.contor_lvl = args["cl"]
         # ========problem input=======
         if problem == 0:
-            self.costFunc = self.evalutate_quad_opt
-            self.A = args['p1'][0]
-            self.b = args['p1'][1]
-            self.solution = np.matmul(np.linalg.inv(self.A), self.b)
+            key_problem1 = "0_k{}_n{}_b{}_m{}_M{}".format(args['k'], args['size'], args['ncb'], args['ncm'],
+                                                          args['ncM'])
+            self.costFunc = self.evaluate_quad_opt
+            self.A = args['dic'][key_problem1][0]
+            self.b = args['dic'][key_problem1][1]
+
         elif problem == 1:
-            self.costFunc = self.evalutate_noncon_opt
-            self.solution = [0]  # temp
-            self.Q = args['p2'][0]
-            self.alpha = args['p2'][1]
-            self.beta = args['p2'][2]
-            self.gamma = args['p2'][3]
+            self.costFunc = self.evaluate_nonconvex_optimizer
+            self.solution = -1000  # temp
+            key_problem2 = "1_k{}_n{}_b{}_m{}_M{}".format(args['k'], args['size'], args['ncb'], args['ncm'],
+                                                          args['ncM'])
+            self.Q = args['dic'][key_problem2][0]
+            self.alpha = args['dic'][key_problem2][1]
+            self.beta = args['dic'][key_problem2][2]
+            self.gamma = args['dic'][key_problem2][3]
         else:
             raise ValueError('parameter "problem" not provided')
 
@@ -263,12 +267,12 @@ class Algorithm:
         return self.best_cost_location, self.costFunc(self.best_cost_location), output_dictionary, loss_values
 
     # optimization function 1
-    def evalutate_quad_opt(self, individual):
+    def evaluate_quad_opt(self, individual):
         x = np.array(individual, dtype=float)
         value = np.linalg.norm(np.matmul(self.A, x) - self.b, 2)
         return value
 
     # optimization function 2
-    def evalutate_noncon_opt(self, x):
+    def evaluate_nonconvex_optimizer(self, x):
         x = np.array([x]).T
         return f_vect(x, self.Q, self.alpha, self.beta, self.gamma)

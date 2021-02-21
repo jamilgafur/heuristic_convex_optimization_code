@@ -22,6 +22,9 @@ import GSA as GSA
 import RAN as RAN
 import PSO as PSO
 
+# For options dictionary
+import itertools
+
 # For graphing
 import matplotlib.pyplot as plt
 
@@ -282,27 +285,10 @@ def setup_alg(options, alg_import):
             print(f"\tRunning problem: {problem + 1}")
             print(f"\tThreading is: {'Enabled' if options.is_threaded else 'Disabled'}")
 
-            # inital can be overwritten
-            p1 = []
-            alpha, beta = gi(options.k, options.size, options.debug)
-            p1.append(alpha)
-            p1.append(beta)
-
-            options.p1 = p1
-
-            p2 = []
-            q_mat, alpha, beta, gamma = gnci(options.size, options.ncm, options.ncM,
-                                             options.ncb)
-            p2.append(q_mat)
-            p2.append(alpha)
-            p2.append(beta)
-            p2.append(gamma)
-            options.p2 = p2
-
             if options.use_pred_inputs:
                 run_num = 1
                 # for steps in [100, 1000, 10000, 100000]:
-                for steps in [1000]:
+                for steps in [100]:
                     options.number_generations = steps
                     log_dict = dict()
                     if options.is_threaded:
@@ -329,16 +315,6 @@ def setup_alg(options, alg_import):
                         for n in n_values:
                             if problem == 0:
                                 for k in k_values:
-                                    options.k = k
-                                    options.size = n
-
-                                    options.p1 = []
-                                    p1 = []
-                                    alpha, beta = gi(options.k, options.size, options.debug)
-                                    p1.append(alpha)
-                                    p1.append(beta)
-
-                                    options.p1 = p1
                                     key = f"{n},{k}"
                                     key_header = ["n", "k"]
 
@@ -360,15 +336,6 @@ def setup_alg(options, alg_import):
                                             options.ncM = M
                                             options.ncb = b
                                             options.size = n
-                                            p2 = []
-                                            q_mat, alpha, beta, gamma = gnci(options.size, options.ncm, options.ncM,
-                                                                             options.ncb)
-                                            p2.append(q_mat)
-                                            p2.append(alpha)
-                                            p2.append(beta)
-                                            p2.append(gamma)
-                                            options.p2 = p2
-                                            options.p1 = []
                                             key = f"{n},{m},{M},{b}"
                                             key_header = ["n", "m", "M", "b"]
 
@@ -422,6 +389,43 @@ def setup_alg(options, alg_import):
                     save_csv_single(loss_values, options, alg_import, key, problem)
 
 
+def generate_dic(options):
+    k_values = [3, 5, 50, 100, 500, 1000]
+    n_values = [5, 10, 50, 100]
+    b_values = [1, 3, 5]
+    m_values = [3, 6, 10]
+    M_values = [1, 4, 7]
+
+    if options.problems == 0:
+        problem_runs = [0]
+    elif options.problems == 1:
+        problem_runs = [1]
+    elif options.problems == 2:
+        problem_runs = [0, 1]
+    else:
+        print("Problems given is not of [0, 1, 2]")
+        exit(1)
+
+    options_dict_values = {}
+    for k in k_values:
+        for n in n_values:
+            for b in b_values:
+                for m in m_values:
+                    for M in M_values:
+                        key_problem1 = "0_k{}_n{}_b{}_m{}_M{}".format(k, n, b, m, M)
+                        key_problem2 = "1_k{}_n{}_b{}_m{}_M{}".format(k, n, b, m, M)
+                        if key_problem2 not in options_dict_values.keys() or key_problem2 not in \
+                                options_dict_values.keys():
+                            # problem 1 parameters
+                            alpha, beta = gi(k, n, options.debug)
+                            options_dict_values[key_problem1] = [alpha, beta]
+                            # problem 2 parameters
+                            q_mat, alpha2, beta2, gamma = gnci(n, m, M, b)
+                            options_dict_values[key_problem2] = [q_mat, alpha2, beta2, gamma]
+
+    return options_dict_values
+
+
 def main():
     # build the parser for implementation
     # Default parser values:
@@ -431,9 +435,11 @@ def main():
     random.seed(options.seed)
     np.random.seed(options.seed)
 
+    options.dic = generate_dic(options)
+
     # Add imported algorithm modules to this list to have them be used.
     # for alg in [GA]:
-    for alg in [PSO, GA, GSA, RAN]:
+    for alg in [PSO, GSA, RAN]:
         print("running: {}".format(alg.to_string()))
         setup_alg(options, alg)
 
