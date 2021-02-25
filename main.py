@@ -439,7 +439,7 @@ def main():
 
     # Add imported algorithm modules to this list to have them be used.
     # for alg in [GA]:
-    for alg in [PSO, GSA, RAN]:
+    for alg in [GA, GSA, RAN, PSO]:
         print("running: {}".format(alg.to_string()))
         setup_alg(options, alg)
 

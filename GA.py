@@ -170,7 +170,13 @@ class Algorithm:
         if problem == 0:
             if not hasattr(args, 'k'):
                 raise ValueError("k must be given when problem 0 is being used")
-            self._init_quad_opt(args.k)
+            #self._init_quad_opt(args.k)
+            key_problem1 = "0_k{}_n{}_b{}_m{}_M{}".format(args.k, args.size, args.ncb, args.ncm,
+                                                          args.ncM)
+            self.A = args.dic[key_problem1][0]
+            self.b = args.dic[key_problem1][1]
+            self.evaluate_fitness = self._evaluatate_quad_opt
+
         elif problem == 1:
             if not hasattr(args, 'ncm'):
                 raise ValueError("ncm must be given when problem 1 is being used")
@@ -178,7 +184,15 @@ class Algorithm:
                 raise ValueError("ncM must be given when problem 1 is being used")
             if not hasattr(args, 'ncb'):
                 raise ValueError("ncb must be given when problem 1 is being used")
-            self._init_noncon_opt(args.ncm, args.ncM, args.ncb)
+            self.evaluate_fitness = self._evalutate_noncon_opt
+            self.solution = -1000  # temp
+            key_problem2 = "1_k{}_n{}_b{}_m{}_M{}".format(args.k, args.size, args.ncb, args.ncm,
+                                                          args.ncM)
+            self.Q = args.dic[key_problem2][0]
+            self.alpha = args.dic[key_problem2][1]
+            self.beta = args.dic[key_problem2][2]
+            self.gamma = args.dic[key_problem2][3]
+            #self._init_noncon_opt(args.ncm, args.ncM, args.ncb)
         else:
             raise ValueError('parameter "problem" not provided')
 
