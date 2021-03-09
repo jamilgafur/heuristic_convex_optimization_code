@@ -15,12 +15,16 @@ import numpy as np
 # For parallel computing
 import multiprocessing
 import signal
+import time
 
 # Imports for the algorithms
 import GA as GA
 import GSA as GSA
 import RAN as RAN
 import PSO as PSO
+
+# For options dictionary
+import itertools
 
 # For graphing
 import matplotlib.pyplot as plt
@@ -30,6 +34,11 @@ import csv
 
 from progress_bar import print_progress_bar
 from grid_search import grid_search
+
+# for optimization
+from convex_quadratic_opt import generate_input as gi
+from convex_quadratic_opt import nonconvex_generate_input as gnci
+from convex_quadratic_opt import f_vect
 
 
 def build_parser():
@@ -85,7 +94,7 @@ def build_parser():
 
     # Arguments for the Random Search Algorithm
     # =====================================================================================
-    parser.add_argument('-rsn', '--random-search-number', dest='rsn', type=int, default=10,
+    parser.add_argument('-rsn', '--random-search-number', dest='rsn', type=int, default=5,
                         help='The number of random points to sample ')
     # =====================================================================================
 
@@ -223,15 +232,12 @@ def save_csv_multi(num_particles, output_dict, alg_import, seed, problem, key_he
 def save_csv_single(loss_values, options, alg_import, key, problem):
     if alg_import.to_string() == "GSA":
         filename = "GSA_prob_{}_pop_{}_{}_gc_{}_gd_{}_iter_{}.csv".format(problem,
-                                                                                options.num_particles, key,
-                                                                                options.gc, options.gd,
-                                                                                options.number_generations)
+                                                                          options.num_particles, key,
+                                                                          options.gc, options.gd,
+                                                                          options.number_generations)
     if alg_import.to_string() == "PSO":
         filename = "PSO_prob_{}_pop_{}_{}_sw_{}_cw_{}_vw_{}_iter_{}.csv".format(problem,
-                                                                                    options.num_particles, key,
-                                                                                    options.sw,
-                                                                                    options.cw, options.vw,
-                                                                                    options.number_generations)
+                                                                                options.number_generations)
 
     if alg_import.to_string() == "GA":
         filename = "GA_prob_{}_pop_{}_{}.csv".format(problem, options.num_particles, key)
@@ -279,10 +285,11 @@ def setup_alg(options, alg_import):
         for problem in problem_runs:
             print(f"\tRunning problem: {problem + 1}")
             print(f"\tThreading is: {'Enabled' if options.is_threaded else 'Disabled'}")
+
             if options.use_pred_inputs:
                 run_num = 1
                 # for steps in [100, 1000, 10000, 100000]:
-                for steps in [10000]:
+                for steps in [1000]:
                     options.number_generations = steps
                     log_dict = dict()
                     if options.is_threaded:
@@ -309,13 +316,12 @@ def setup_alg(options, alg_import):
                         for n in n_values:
                             if problem == 0:
                                 for k in k_values:
-                                    options.k = k
-                                    options.size = n
                                     key = f"{n},{k}"
                                     key_header = ["n", "k"]
 
                                     if options.is_threaded:
-                                        futures[executor.apply_async(run_alg, (problem, vars(options), alg_import.Algorithm))] = key
+                                        futures[executor.apply_async(run_alg, (
+                                            problem, vars(options), alg_import.Algorithm))] = key
                                         print(f'\rSubmitted {submitted} / {total} jobs', end='\r')
                                         submitted += 1
                                     else:
@@ -335,7 +341,8 @@ def setup_alg(options, alg_import):
                                             key_header = ["n", "m", "M", "b"]
 
                                             if options.is_threaded:
-                                                futures[executor.apply_async(run_alg, (problem, vars(options), alg_import.Algorithm))] = key
+                                                futures[executor.apply_async(run_alg, (
+                                                    problem, vars(options), alg_import.Algorithm))] = key
                                                 print(f'\rSubmitted {submitted} / {total} jobs', end='\r')
                                                 submitted += 1
                                             else:
@@ -370,7 +377,8 @@ def setup_alg(options, alg_import):
                         plot_multi_data(options.num_particles, log_dict, alg_import)
 
                     if options.is_csv_exported:
-                        save_csv_multi(options.num_particles, log_dict, alg_import, str(options.seed), problem, key_header)
+                        save_csv_multi(options.num_particles, log_dict, alg_import, str(options.seed), problem,
+                                       key_header)
             else:
                 loss_values = run_alg(problem, vars(options), alg_import.Algorithm)
 
@@ -379,9 +387,44 @@ def setup_alg(options, alg_import):
                         key = key = f"k={options.k}, n={options.size}"
                     else:
                         key = f"m={options.ncm}, M={options.ncM}, b={options.ncb}, n={options.size}"
-
                     save_csv_single(loss_values, options, alg_import, key, problem)
 
+
+def generate_dic(options):
+    k_values = [3, 5, 50, 100, 500, 1000]
+    n_values = [5, 10, 50, 100]
+    b_values = [1, 3, 5]
+    m_values = [3, 6, 10]
+    M_values = [1, 4, 7]
+
+    if options.problems == 0:
+        problem_runs = [0]
+    elif options.problems == 1:
+        problem_runs = [1]
+    elif options.problems == 2:
+        problem_runs = [0, 1]
+    else:
+        print("Problems given is not of [0, 1, 2]")
+        exit(1)
+
+    options_dict_values = {}
+    for k_in in k_values:
+        for n_in in n_values:
+            for b in b_values:
+                for m in m_values:
+                    for M in M_values:
+                        key_problem1 = "0_k{}_n{}_b{}_m{}_M{}".format(k_in, n_in, b, m, M)
+                        key_problem2 = "1_k{}_n{}_b{}_m{}_M{}".format(k_in, n_in, b, m, M)
+                        if key_problem2 not in options_dict_values.keys() or key_problem2 not in \
+                                options_dict_values.keys():
+                            # problem 1 parameters
+                            alpha, beta, solution = gi(k_in, n_in, options.debug)
+                            options_dict_values[key_problem1] = [alpha, beta, solution]
+                            # problem 2 parameters
+                            q_mat, alpha2, beta2, gamma = gnci(n_in, m, M, b)
+                            options_dict_values[key_problem2] = [q_mat, alpha2, beta2, gamma]
+
+    return options_dict_values
 
 def main():
     # build the parser for implementation
@@ -392,11 +435,16 @@ def main():
     random.seed(options.seed)
     np.random.seed(options.seed)
 
+    options.dic = generate_dic(options)
+
     # Add imported algorithm modules to this list to have them be used.
-    # for alg in [GA]:
-    for alg in [GA, PSO, RAN, GSA]:
+
+    for alg in [GSA]:
         print("running: {}".format(alg.to_string()))
         setup_alg(options, alg)
+        time.sleep(10)
+        print("Next algorithm")
+
 
 
 if __name__ == '__main__':

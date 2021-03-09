@@ -93,7 +93,7 @@ class Particle:
 
 
 class Algorithm:
-    def __init__(self, **args):
+    def __init__(self, problem, **args):
         # ========command arguments===========
         self.debug = args["debug"]
         self.dimension = args["size"]
@@ -115,18 +115,26 @@ class Algorithm:
         self.history_loc = []
         self.solution = []
         self.contor_lvl = args["cl"]
-        # =========== search problem==========
-        if self.cost_var == 0:
-            self.costFunc = self.evalutate_quad_opt
-            self.A, self.b = gi(args['k'], args["size"], args["debug"])
-            self.solution = np.matmul(np.linalg.inv(self.A), self.b)
+        # ========problem input=======
+        if problem == 0:
+            key_problem1 = "0_k{}_n{}_b{}_m{}_M{}".format(args['k'], args['size'], args['ncb'], args['ncm'],
+                                                          args['ncM'])
+            self.costFunc = self.evaluate_quad_opt
+            self.A = args['dic'][key_problem1][0]
+            self.b = args['dic'][key_problem1][1]
+            self.solution = args['dic'][key_problem1][2]
+
+        elif problem == 1:
+            self.costFunc = self.evaluate_nonconvex_optimizer
+            self.solution = -1000  # temp
+            key_problem2 = "1_k{}_n{}_b{}_m{}_M{}".format(args['k'], args['size'], args['ncb'], args['ncm'],
+                                                          args['ncM'])
+            self.Q = args['dic'][key_problem2][0]
+            self.alpha = args['dic'][key_problem2][1]
+            self.beta = args['dic'][key_problem2][2]
+            self.gamma = args['dic'][key_problem2][3]
         else:
-            self.costFunc = self.evalutate_noncon_opt
-            self.solution = [0]  # temp
-            self.m = args['ncm']
-            self.M = args['ncM']
-            self.b = args['ncb']
-            self.Q, self.alpha, self.beta, self.gamma = gnci(args["size"], args['ncm'], args['ncM'], args['ncb'])
+            raise ValueError('parameter "problem" not provided')
 
         if self.debug and self.dimension == 2:
             self.fig = plt.figure()
@@ -261,12 +269,12 @@ class Algorithm:
         return self.best_cost_location, self.costFunc(self.best_cost_location), output_dictionary, loss_values
 
     # optimization function 1
-    def evalutate_quad_opt(self, individual):
+    def evaluate_quad_opt(self, individual):
         x = np.array(individual, dtype=float)
         value = np.linalg.norm(np.matmul(self.A, x) - self.b, 2)
         return value
 
     # optimization function 2
-    def evalutate_noncon_opt(self, x):
+    def evaluate_nonconvex_optimizer(self, x):
         x = np.array([x]).T
         return f_vect(x, self.Q, self.alpha, self.beta, self.gamma)

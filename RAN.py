@@ -39,7 +39,7 @@ class Particle:
 
 
 class Algorithm:
-    def __init__(self, **args):
+    def __init__(self, problem,  **args):
         self.debug = args["debug"]
         self.cost_var = args["problems"]
 
@@ -57,21 +57,32 @@ class Algorithm:
         self.solution_cost = 1000
         self.contor_lvl = args['cl']
         self.sample_points = args['rsn']
-        if args["problems"] == 0:
-            self.k = args["k"]
-            self.A, self.b = gi(self.k, args["size"], args["debug"])
+
+        # ========problem input=======
+        if problem == 0:
+            key_problem1 = "0_k{}_n{}_b{}_m{}_M{}".format(args['k'], args['size'], args['ncb'], args['ncm'],
+                                                          args['ncM'])
             self.costFunc = self.evaluate_quad_opt
-            self.solution = np.asarray(np.matmul(np.linalg.inv(self.A), self.b))
-            if self.debug and len(self.A) == 2:
-                self.fig = plt.figure()
-                self.ax = plt.axes()
-                self.line, = self.ax.plot([], [], 'o', color='black')
+            self.A = args['dic'][key_problem1][0]
+            self.b = args['dic'][key_problem1][1]
+            self.solution = args['dic'][key_problem1][2]
+
+        elif problem == 1:
+            self.costFunc = self.evaluate_nonconvex_optimizer
+            self.solution = -1000  # temp
+            key_problem2 = "1_k{}_n{}_b{}_m{}_M{}".format(args['k'], args['size'], args['ncb'], args['ncm'],
+                                                          args['ncM'])
+            self.Q = args['dic'][key_problem2][0]
+            self.alpha = args['dic'][key_problem2][1]
+            self.beta = args['dic'][key_problem2][2]
+            self.gamma = args['dic'][key_problem2][3]
         else:
-            self.costFunc = self.evaluate_noncon_opt
-            self.Q, self.alpha, self.beta, self.gamma = gnci(args["size"], args['ncm'], args['ncM'], args['ncb'])
-            self.solution = f_vect(np.array([[0 for _ in range(self.dimension)]]).T, self.Q, self.alpha, self.beta, self.gamma)
+            raise ValueError('parameter "problem" not provided')
 
-
+        if self.debug and self.dimension == 2:
+            self.fig = plt.figure()
+            self.ax = plt.axes()
+            self.line, = self.ax.plot([], [], 'o', color='black')
         # establish the swarm
         self.history_loc = []
         self.swarm = []
@@ -167,7 +178,8 @@ class Algorithm:
             print("\nsolution: {}\nsolution_cost:{}".format(self.solution_position, self.costFunc(self.solution_position)))
         output_dictionary = {"iterations": [i for i in range(self.maxiter)], "min": self.min_results,
                              "max": self.max_results, "avg": self.avg, "std": self.std}
-        return self.solution_position, self.costFunc(self.solution_position), output_dictionary, loss_values
+
+        return self.solution_position, self.solution_cost, output_dictionary, loss_values
 
     # optimization function 1
     def evaluate_quad_opt(self, individual):
@@ -176,6 +188,6 @@ class Algorithm:
         return value
 
     # optimization function 2
-    def evaluate_noncon_opt(self, x):
+    def evaluate_nonconvex_optimizer(self, x):
         x = np.array([x]).T
         return f_vect(x, self.Q, self.alpha, self.beta, self.gamma)

@@ -148,7 +148,14 @@ def generate_input(k, size, debug=0):
 
     A = generate_A(k, size, debug)
     b = rng.normal(0, 1, (size, 1))  # Generate normally distributed vector (mean=0, std. dev.=1)
-    return A, b
+    solution = generate_solution_convex(A, b)
+    return A, b, solution
+
+def generate_solution_convex(A, b):
+    return np.matmul(np.linalg.inv(A), b)
+
+def generate_solution_nonconvex(Q, alpha, beta, gamma):
+    return 1
 
 # Problem 2: Highly non-convex optimization
 # ===========================================================================================================
@@ -159,7 +166,7 @@ def nonconvex_generate_input(size, m, M, b):
     alpha = np.random.uniform(0, M, size=(m, size))
     beta = np.random.uniform(1, b ** 2, size=(m, size))
     gamma = np.random.uniform(0, 2 * np.pi, size=(m, size))
-
+    solution = generate_solution_nonconvex(Q, alpha, beta, gamma)
     return Q, alpha, beta, gamma
 
 
