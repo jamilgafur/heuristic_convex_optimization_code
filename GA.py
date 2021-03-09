@@ -175,6 +175,7 @@ class Algorithm:
                                                           args.ncM)
             self.A = args.dic[key_problem1][0]
             self.b = args.dic[key_problem1][1]
+            self.solution = args.dic[key_problem1][2]
             self.evaluate_fitness = self._evaluatate_quad_opt
 
         elif problem == 1:

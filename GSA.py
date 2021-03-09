@@ -27,6 +27,7 @@ def get_params_gs():
 def to_string():
     return "GSA"
 
+
 class Particle:
     def __init__(self, dimension, name, debug):
         self.debug = debug
@@ -121,6 +122,7 @@ class Algorithm:
             self.costFunc = self.evaluate_quad_opt
             self.A = args['dic'][key_problem1][0]
             self.b = args['dic'][key_problem1][1]
+            self.solution = args['dic'][key_problem1][2]
 
         elif problem == 1:
             self.costFunc = self.evaluate_nonconvex_optimizer

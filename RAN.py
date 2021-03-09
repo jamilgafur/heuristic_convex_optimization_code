@@ -65,6 +65,7 @@ class Algorithm:
             self.costFunc = self.evaluate_quad_opt
             self.A = args['dic'][key_problem1][0]
             self.b = args['dic'][key_problem1][1]
+            self.solution = args['dic'][key_problem1][2]
 
         elif problem == 1:
             self.costFunc = self.evaluate_nonconvex_optimizer
@@ -177,6 +178,7 @@ class Algorithm:
             print("\nsolution: {}\nsolution_cost:{}".format(self.solution_position, self.costFunc(self.solution_position)))
         output_dictionary = {"iterations": [i for i in range(self.maxiter)], "min": self.min_results,
                              "max": self.max_results, "avg": self.avg, "std": self.std}
+
         return self.solution_position, self.solution_cost, output_dictionary, loss_values
 
     # optimization function 1

@@ -15,6 +15,7 @@ import numpy as np
 # For parallel computing
 import multiprocessing
 import signal
+import time
 
 # Imports for the algorithms
 import GA as GA
@@ -93,7 +94,7 @@ def build_parser():
 
     # Arguments for the Random Search Algorithm
     # =====================================================================================
-    parser.add_argument('-rsn', '--random-search-number', dest='rsn', type=int, default=10,
+    parser.add_argument('-rsn', '--random-search-number', dest='rsn', type=int, default=5,
                         help='The number of random points to sample ')
     # =====================================================================================
 
@@ -288,7 +289,7 @@ def setup_alg(options, alg_import):
             if options.use_pred_inputs:
                 run_num = 1
                 # for steps in [100, 1000, 10000, 100000]:
-                for steps in [100]:
+                for steps in [1000]:
                     options.number_generations = steps
                     log_dict = dict()
                     if options.is_threaded:
@@ -407,24 +408,23 @@ def generate_dic(options):
         exit(1)
 
     options_dict_values = {}
-    for k in k_values:
-        for n in n_values:
+    for k_in in k_values:
+        for n_in in n_values:
             for b in b_values:
                 for m in m_values:
                     for M in M_values:
-                        key_problem1 = "0_k{}_n{}_b{}_m{}_M{}".format(k, n, b, m, M)
-                        key_problem2 = "1_k{}_n{}_b{}_m{}_M{}".format(k, n, b, m, M)
+                        key_problem1 = "0_k{}_n{}_b{}_m{}_M{}".format(k_in, n_in, b, m, M)
+                        key_problem2 = "1_k{}_n{}_b{}_m{}_M{}".format(k_in, n_in, b, m, M)
                         if key_problem2 not in options_dict_values.keys() or key_problem2 not in \
                                 options_dict_values.keys():
                             # problem 1 parameters
-                            alpha, beta = gi(k, n, options.debug)
-                            options_dict_values[key_problem1] = [alpha, beta]
+                            alpha, beta, solution = gi(k_in, n_in, options.debug)
+                            options_dict_values[key_problem1] = [alpha, beta, solution]
                             # problem 2 parameters
-                            q_mat, alpha2, beta2, gamma = gnci(n, m, M, b)
+                            q_mat, alpha2, beta2, gamma = gnci(n_in, m, M, b)
                             options_dict_values[key_problem2] = [q_mat, alpha2, beta2, gamma]
 
     return options_dict_values
-
 
 def main():
     # build the parser for implementation
@@ -438,10 +438,13 @@ def main():
     options.dic = generate_dic(options)
 
     # Add imported algorithm modules to this list to have them be used.
-    # for alg in [GA]:
-    for alg in [GA, GSA, RAN, PSO]:
+
+    for alg in [GSA]:
         print("running: {}".format(alg.to_string()))
         setup_alg(options, alg)
+        time.sleep(10)
+        print("Next algorithm")
+
 
 
 if __name__ == '__main__':
