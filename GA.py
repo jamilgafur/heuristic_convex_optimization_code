@@ -13,7 +13,7 @@ from deap import creator
 from deap import tools
 
 # Imports for problems
-from convex_quadratic_opt import generate_input as cqo_gen_input
+from convex_quadratic_opt import generate_input as cqo_gen_input, generate_solution_nonconvex
 from convex_quadratic_opt import nonconvex_generate_input as nonc_gen_input
 from convex_quadratic_opt import f_vect
 
@@ -186,13 +186,14 @@ class Algorithm:
             if not hasattr(args, 'ncb'):
                 raise ValueError("ncb must be given when problem 1 is being used")
             self.evaluate_fitness = self._evalutate_noncon_opt
-            self.solution = -1000  # temp
             key_problem2 = "1_k{}_n{}_b{}_m{}_M{}".format(args.k, args.size, args.ncb, args.ncm,
                                                           args.ncM)
             self.Q = args.dic[key_problem2][0]
             self.alpha = args.dic[key_problem2][1]
             self.beta = args.dic[key_problem2][2]
             self.gamma = args.dic[key_problem2][3]
+            self.evaluate_fitness = self._evalutate_noncon_opt
+            self.solution = generate_solution_nonconvex(self.Q, self.alpha, self.beta, self.gamma)
             #self._init_noncon_opt(args.ncm, args.ncM, args.ncb)
         else:
             raise ValueError('parameter "problem" not provided')
@@ -212,8 +213,7 @@ class Algorithm:
 
     # optimization function 2
     def _evalutate_noncon_opt(self, individual):
-        x = np.array([individual]).T
-        return (f_vect(x, self.Q, self.alpha, self.beta, self.gamma),)
+        return (f_vect(individual, self.Q, self.alpha, self.beta, self.gamma),)
 
     # Fitness evaluation methods (must return iterable)
     # Remember, we want to minimize these functions, so to hurt them we need to return
@@ -364,9 +364,16 @@ class Algorithm:
 
             print("\tBest individual seen fitness value:\t\t%.3f" % (hof[0].fitness.values[0]))
 
+        # diffs = []
+        # for particle in self.swarm:
+        #     diffs.append(np.sum(np.subtract(self.solution, particle.position)))
+
+        print("got: {}\tcost:{}".format(hof[0], hof[0].fitness.values[0]))
+        print("sol: {}".format(self.solution))
+
         gen, min_results, max_results, avg, std = logbook.select("gen", "min", "max", "avg", "std")
         return hof[0], hof[0].fitness.values[0], {"iterations": gen, "min": min_results, "max": max_results, "avg": avg,
-                                                  "std": std}, loss_values
+                                                  "std": std}, loss_values, []
 
     def __getstate__(self):
         self_dict = self.__dict__.copy()
