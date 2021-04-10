@@ -8,7 +8,7 @@ Created on Mon Dec 21 14:31:37 2020
 
 # Adapted from https://nathanrooy.github.io/posts/2016-08-17/simple-particle-swarm-optimization-with-python/
 
-from convex_quadratic_opt import generate_input as gi
+from convex_quadratic_opt import generate_input as gi, generate_solution_nonconvex
 from convex_quadratic_opt import nonconvex_generate_input as gnci
 from convex_quadratic_opt import f_vect
 import numpy as np
@@ -39,7 +39,7 @@ class Particle:
 
 
 class Algorithm:
-    def __init__(self, problem,  **args):
+    def __init__(self, problem, **args):
         self.debug = args["debug"]
         self.cost_var = args["problems"]
 
@@ -66,16 +66,15 @@ class Algorithm:
             self.A = args['dic'][key_problem1][0]
             self.b = args['dic'][key_problem1][1]
             self.solution = args['dic'][key_problem1][2]
-
         elif problem == 1:
-            self.costFunc = self.evaluate_nonconvex_optimizer
-            self.solution = -1000  # temp
             key_problem2 = "1_k{}_n{}_b{}_m{}_M{}".format(args['k'], args['size'], args['ncb'], args['ncm'],
                                                           args['ncM'])
+            self.costFunc = self.evaluate_nonconvex_optimizer
             self.Q = args['dic'][key_problem2][0]
             self.alpha = args['dic'][key_problem2][1]
             self.beta = args['dic'][key_problem2][2]
             self.gamma = args['dic'][key_problem2][3]
+            self.solution = generate_solution_nonconvex(self.Q, self.alpha, self.beta, self.gamma)
         else:
             raise ValueError('parameter "problem" not provided')
 
@@ -175,12 +174,16 @@ class Algorithm:
             anim.save('PSO_k_{}_prob_{}_pop_{}.gif'.format(self.k, self.cost_var, self.num_particles),
                       writer='imagemagick')
 
-            print("\nsolution: {}\nsolution_cost:{}".format(self.solution_position, self.costFunc(self.solution_position)))
+            print("\nsolution: {}\nsolution_cost:{}".format(self.solution_position,
+                                                            self.costFunc(self.solution_position)))
         output_dictionary = {"iterations": [i for i in range(self.maxiter)], "min": self.min_results,
                              "max": self.max_results, "avg": self.avg, "std": self.std}
         diffs = []
         for particle in self.swarm:
             diffs.append(np.sum(np.subtract(self.solution, particle.position)))
+
+        print("got: {}\tcost:{}".format(self.solution_position, self.costFunc(self.solution_position)))
+        print("sol: {}\tcost:{}".format(self.solution, self.costFunc(self.solution)))
 
         return self.solution_position, self.solution_cost, output_dictionary, loss_values, diffs
 
@@ -192,5 +195,4 @@ class Algorithm:
 
     # optimization function 2
     def evaluate_nonconvex_optimizer(self, x):
-        x = np.array([x]).T
         return f_vect(x, self.Q, self.alpha, self.beta, self.gamma)

@@ -462,7 +462,7 @@ def main():
     print("generating done")
 
     # Add imported algorithm modules to this list to have them be used.
-    for alg in [GSA]:
+    for alg in [PSO, GSA, RAN]:
         print("running: {}".format(alg.to_string()))
         setup_alg(options, alg)
         time.sleep(10)

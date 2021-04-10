@@ -1,6 +1,6 @@
 # Adapted from https://nathanrooy.github.io/posts/2016-08-17/simple-particle-swarm-optimization-with-python/
 
-from convex_quadratic_opt import generate_input as gi
+from convex_quadratic_opt import generate_input as gi, generate_solution_nonconvex
 from convex_quadratic_opt import nonconvex_generate_input as gnci
 from convex_quadratic_opt import f_vect
 
@@ -95,16 +95,16 @@ class Algorithm:
             self.A = args['dic'][key_problem1][0]
             self.b = args['dic'][key_problem1][1]
             self.solution = args['dic'][key_problem1][2]
-
         elif problem == 1:
-            self.costFunc = self.evaluate_nonconvex_optimizer
-            self.solution = [0 for i in range(self.dimension)]  # temp
+
             key_problem2 = "1_k{}_n{}_b{}_m{}_M{}".format(args['k'], args['size'], args['ncb'], args['ncm'],
                                                           args['ncM'])
+            self.costFunc = self.evaluate_nonconvex_optimizer
             self.Q = args['dic'][key_problem2][0]
             self.alpha = args['dic'][key_problem2][1]
             self.beta = args['dic'][key_problem2][2]
             self.gamma = args['dic'][key_problem2][3]
+            self.solution = generate_solution_nonconvex(self.Q, self.alpha, self.beta, self.gamma)
         else:
             raise ValueError('parameter "problem" not provided')
 
@@ -221,6 +221,9 @@ class Algorithm:
         for particle in self.swarm:
             diffs.append(np.sum(np.subtract(self.solution, particle.position)))
 
+        print("got: {}\tcost:{}".format(self.pos_best_g, self.costFunc(self.pos_best_g)))
+        print("sol: {}\tcost:{}".format(self.solution, self.costFunc(self.solution)))
+
         return self.pos_best_g, self.costFunc(self.pos_best_g), output_dictionary, loss_values, diffs
 
     # optimization function 1
@@ -231,5 +234,4 @@ class Algorithm:
 
     # optimization function 2
     def evaluate_nonconvex_optimizer(self, x):
-        x = np.array([x]).T
         return f_vect(x, self.Q, self.alpha, self.beta, self.gamma)
