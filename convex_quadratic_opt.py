@@ -145,17 +145,31 @@ def generate_input(k, size, debug=0):
   (A matrix, b vector)
 
   """
-
     A = generate_A(k, size, debug)
     b = rng.normal(0, 1, (size, 1))  # Generate normally distributed vector (mean=0, std. dev.=1)
     solution = generate_solution_convex(A, b)
     return A, b, solution
 
+
 def generate_solution_convex(A, b):
     return np.matmul(np.linalg.inv(A), b)
 
+
 def generate_solution_nonconvex(Q, alpha, beta, gamma):
-    return 1
+    z = np.linspace(-10, 10, 10000)
+    g_j_min = []
+    for row in range(Q.shape[0]):
+        y = []
+        for n in range(len(z)):
+            y.append(g_j_test(z[n], alpha[:, row], beta[:, row], \
+                              gamma[:, row]))
+        star_loc = y.index(min(y))
+        g_j_min.append(z[star_loc])
+
+    g_j_min = np.transpose(Q) @ g_j_min
+
+    return g_j_min
+
 
 # Problem 2: Highly non-convex optimization
 # ===========================================================================================================
@@ -166,7 +180,6 @@ def nonconvex_generate_input(size, m, M, b):
     alpha = np.random.uniform(0, M, size=(m, size))
     beta = np.random.uniform(1, b ** 2, size=(m, size))
     gamma = np.random.uniform(0, 2 * np.pi, size=(m, size))
-    solution = generate_solution_nonconvex(Q, alpha, beta, gamma)
     return Q, alpha, beta, gamma
 
 
@@ -261,7 +274,9 @@ def f_vect(x, Q, alpha, beta, gamma):
     :return: f(x)
     """
     z = np.matmul(Q, x)
-    return ((0.5 * np.matmul(z.T, z)) + np.sum(np.multiply(alpha, np.cos((np.matmul(beta, z) + gamma)))))[0, 0]
+    return np.dot(z, z) / 2 + np.sum(alpha * np.cos(np.array(z, ndmin=2) * beta + gamma), axis=(0, 1))
+
+
 # ===========================================================================================================
 
 if __name__ == '__main__':

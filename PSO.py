@@ -98,7 +98,7 @@ class Algorithm:
 
         elif problem == 1:
             self.costFunc = self.evaluate_nonconvex_optimizer
-            self.solution = -1000  # temp
+            self.solution = [0 for i in range(self.dimension)]  # temp
             key_problem2 = "1_k{}_n{}_b{}_m{}_M{}".format(args['k'], args['size'], args['ncb'], args['ncm'],
                                                           args['ncM'])
             self.Q = args['dic'][key_problem2][0]
@@ -216,8 +216,12 @@ class Algorithm:
             print("\nsolution: {}\nsolution_cost:{}".format(self.pos_best_g, self.costFunc(self.pos_best_g)))
         output_dictionary = {"iterations": [i for i in range(self.max_Iterations)], "min": self.min_results,
                              "max": self.max_results, "avg": self.avg, "std": self.std}
-        print(self.costFunc(self.pos_best_g))
-        return self.pos_best_g, self.costFunc(self.pos_best_g), output_dictionary, loss_values
+
+        diffs = []
+        for particle in self.swarm:
+            diffs.append(np.sum(np.subtract(self.solution, particle.position)))
+
+        return self.pos_best_g, self.costFunc(self.pos_best_g), output_dictionary, loss_values, diffs
 
     # optimization function 1
     def evaluate_quad_opt(self, individual):

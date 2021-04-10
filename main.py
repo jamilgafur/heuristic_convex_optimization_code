@@ -40,6 +40,9 @@ from convex_quadratic_opt import generate_input as gi
 from convex_quadratic_opt import nonconvex_generate_input as gnci
 from convex_quadratic_opt import f_vect
 
+# to hold the diff values for plotting
+temp_data = {}
+
 
 def build_parser():
     """
@@ -100,10 +103,10 @@ def build_parser():
 
     # Arguments for the PSO
     # =====================================================================================
-    parser.add_argument('-vw', '--vel_weight', dest='vw', type=float, default=.5,
+    parser.add_argument('-vw', '--vel_weight', dest='vw', type=float, default=.9,
                         help='The previous velocity weight',
                         metavar='VW')
-    parser.add_argument('-sw', '--social_weight', dest='sw', type=float, default=.5,
+    parser.add_argument('-sw', '--social_weight', dest='sw', type=float, default=.7,
                         help='The social particle weighting',
                         metavar='SW')
     parser.add_argument('-cw', '--cognitive_weight', dest='cw', type=float, default=.5,
@@ -200,12 +203,12 @@ def run_alg(problem, options, alg_class):
   """
     if problem == 1:
         alg = alg_class(problem=1, **options)
-        _, _, _, loss_values = alg.run()
+        _, _, _, loss_values, value = alg.run()
     elif problem == 0:
         alg = alg_class(problem=0, **options)
-        _, _, _, loss_values = alg.run()
+        _, _, _, loss_values, value = alg.run()
 
-    return loss_values
+    return loss_values, value
 
 
 # Data output methods
@@ -289,9 +292,10 @@ def setup_alg(options, alg_import):
             if options.use_pred_inputs:
                 run_num = 1
                 # for steps in [100, 1000, 10000, 100000]:
-                for steps in [1000]:
+                for steps in [100]:
                     options.number_generations = steps
                     log_dict = dict()
+                    dis_dict = dict()
                     if options.is_threaded:
                         original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
                         executor = multiprocessing.Pool(8)
@@ -325,7 +329,9 @@ def setup_alg(options, alg_import):
                                         print(f'\rSubmitted {submitted} / {total} jobs', end='\r')
                                         submitted += 1
                                     else:
-                                        loss_values = run_alg(problem, vars(options), alg_import.Algorithm)
+                                        loss_values, distance_from_sol = run_alg(problem, vars(options),
+                                                                                 alg_import.Algorithm)
+                                        dis_dict[key] = distance_from_sol
                                         log_dict[key] = loss_values
                                         print_progress_bar(run_num, total)
                                         run_num += 1
@@ -346,7 +352,9 @@ def setup_alg(options, alg_import):
                                                 print(f'\rSubmitted {submitted} / {total} jobs', end='\r')
                                                 submitted += 1
                                             else:
-                                                loss_values = run_alg(problem, vars(options), alg_import.Algorithm)
+                                                loss_values, distance_from_sol = run_alg(problem, vars(options),
+                                                                                         alg_import.Algorithm)
+                                                dis_dict[key] = distance_from_sol
                                                 log_dict[key] = loss_values
                                                 print_progress_bar(run_num, total)
                                                 run_num += 1
@@ -355,11 +363,12 @@ def setup_alg(options, alg_import):
                             for future in futures:
                                 key = futures[future]
                                 try:
-                                    loss_values = future.get()
+                                    loss_values, distance_from_sol = future.get()
                                 except Exception as exc:
                                     print('%r generated an exception: %s' % (key, exc))
                                     raise exc
                                 else:
+                                    dis_dict[key] = distance_from_sol
                                     log_dict[key] = loss_values
                                     print_progress_bar(run_num, total)
                                     run_num += 1
@@ -380,14 +389,21 @@ def setup_alg(options, alg_import):
                         save_csv_multi(options.num_particles, log_dict, alg_import, str(options.seed), problem,
                                        key_header)
             else:
-                loss_values = run_alg(problem, vars(options), alg_import.Algorithm)
-
+                loss_values, distance_from_sol = run_alg(problem, vars(options), alg_import.Algorithm)
                 if options.is_csv_exported:
                     if problem == 0:
                         key = key = f"k={options.k}, n={options.size}"
+                        dis_dict[key] = distance_from_sol
+                        log_dict[key] = loss_values
                     else:
                         key = f"m={options.ncm}, M={options.ncM}, b={options.ncb}, n={options.size}"
+                        dis_dict[key] = distance_from_sol
+                        log_dict[key] = loss_values
+
                     save_csv_single(loss_values, options, alg_import, key, problem)
+            w = csv.writer(open("type_{}_prob_{}_output.csv".format(alg_import.to_string(), problem), "w"))
+            #for key, val in dis_dict.items():
+            #    w.writerow([key, val])
 
 
 def generate_dic(options):
@@ -419,12 +435,19 @@ def generate_dic(options):
                                 options_dict_values.keys():
                             # problem 1 parameters
                             alpha, beta, solution = gi(k_in, n_in, options.debug)
-                            options_dict_values[key_problem1] = [alpha, beta, solution]
+                            solution_loc = [i[0] for i in solution]
+                            options_dict_values[key_problem1] = [alpha, beta, solution_loc]
                             # problem 2 parameters
                             q_mat, alpha2, beta2, gamma = gnci(n_in, m, M, b)
                             options_dict_values[key_problem2] = [q_mat, alpha2, beta2, gamma]
 
+    # DEPRECATED
+    # solution_file = open("solution_file_seed_{}.txt".format(options.seed), "w+")
+    # for key in options_dict_values.keys():
+    #     solution_file.write(key + " | " + str(options_dict_values[key][-1]))
+    # solution_file.close()
     return options_dict_values
+
 
 def main():
     # build the parser for implementation
@@ -434,17 +457,17 @@ def main():
     options = parser.parse_args()
     random.seed(options.seed)
     np.random.seed(options.seed)
-
+    print("generating dictionary")
     options.dic = generate_dic(options)
+    print("generating done")
 
     # Add imported algorithm modules to this list to have them be used.
-
     for alg in [GSA]:
         print("running: {}".format(alg.to_string()))
         setup_alg(options, alg)
         time.sleep(10)
         print("Next algorithm")
-
+    print(temp_data)
 
 
 if __name__ == '__main__':
