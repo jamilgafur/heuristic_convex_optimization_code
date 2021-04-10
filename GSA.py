@@ -273,7 +273,6 @@ class Algorithm:
         print("got: {}\tcost:{}".format(self.best_cost_location, self.costFunc(self.best_cost_location)))
         print("sol: {}\tcost:{}".format(self.solution, self.costFunc(self.solution)))
 
-
         return self.best_cost_location, self.costFunc(self.best_cost_location), output_dictionary, loss_values, diffs
 
     # optimization function 1
