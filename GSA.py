@@ -268,7 +268,7 @@ class Algorithm:
                              "max": self.max_results, "avg": self.avg, "std": self.std}
         diffs = []
         for particle in self.swarm:
-            diffs.append(np.sum(np.subtract(self.solution, particle.position)))
+            diffs.append(np.sqrt(np.square(np.subtract(self.solution, particle.position))).mean())
 
         # print("got: {}\tcost:{}".format(self.best_cost_location, self.costFunc(self.best_cost_location)))
         # print("sol: {}\tcost:{}".format(self.solution, self.costFunc(self.solution)))
