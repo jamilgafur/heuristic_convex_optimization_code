@@ -25,7 +25,7 @@ import PSO as PSO
 
 # For options dictionary
 import itertools
-
+import time
 # For graphing
 import matplotlib.pyplot as plt
 
@@ -36,12 +36,9 @@ from progress_bar import print_progress_bar
 from grid_search import grid_search
 
 # for optimization
-from convex_quadratic_opt import generate_input as gi
+from convex_quadratic_opt import generate_input as gi, generate_solution_nonconvex
 from convex_quadratic_opt import nonconvex_generate_input as gnci
 from convex_quadratic_opt import f_vect
-
-# to hold the diff values for plotting
-temp_data = {}
 
 
 def build_parser():
@@ -122,20 +119,20 @@ def build_parser():
 
     # Arguments for Quadratic Optimization problem
     # =====================================================================================
-    parser.add_argument('-k', '--condition-number', dest='k', type=int, default=3,
+    parser.add_argument('-k', '--condition-number', dest='k', type=int, default=5,
                         help='The condition number that we want to approximate for A matrix',
                         metavar='K')
     # =====================================================================================
 
     # Arguments for Nonconvex Optimization problem
     # =====================================================================================
-    parser.add_argument('-ncm', '--ncm', dest='ncm', type=int, default=3,
+    parser.add_argument('-ncm', '--ncm', dest='ncm', type=int, default=5,
                         help='Number of local minimizers (3, 10)',
                         metavar='ncm')
-    parser.add_argument('-ncb', '--ncb', dest='ncb', type=int, default=1,
+    parser.add_argument('-ncb', '--ncb', dest='ncb', type=int, default=5,
                         help='Upper limit for random numbers generates for beta',
                         metavar='ncb')
-    parser.add_argument('-ncM', '--ncM', dest='ncM', type=int, default=1,
+    parser.add_argument('-ncM', '--ncM', dest='ncM', type=int, default=5,
                         help='Upper limit for random numbers generates for alpha',
                         metavar='ncM')
     # =====================================================================================
@@ -292,7 +289,7 @@ def setup_alg(options, alg_import):
             if options.use_pred_inputs:
                 run_num = 1
                 # for steps in [100, 1000, 10000, 100000]:
-                for steps in [100]:
+                for steps in [10]:
                     options.number_generations = steps
                     log_dict = dict()
                     dis_dict = dict()
@@ -306,11 +303,11 @@ def setup_alg(options, alg_import):
                     try:
                         # for k in [3, 10, 30, 100, 300, 1000]:
                         #  for n in [2, 5, 10, 20, 50, 100]:
-                        k_values = [5, 50, 100, 500, 1000]
-                        n_values = [5, 10, 50, 100]
-                        b_values = [1, 3, 5]
-                        m_values = [3, 6, 10]
-                        M_values = [1, 4, 7]
+                        k_values = [5, 10, 50]
+                        n_values = [5, 10, 50]
+                        b_values = [5, 10, 50]
+                        m_values = [5, 10, 50]
+                        M_values = [5, 10, 50]
 
                         if problem == 0:
                             total = len(k_values) * len(n_values)
@@ -402,16 +399,16 @@ def setup_alg(options, alg_import):
 
                     save_csv_single(loss_values, options, alg_import, key, problem)
             w = csv.writer(open("type_{}_prob_{}_output.csv".format(alg_import.to_string(), problem), "w"))
-            #for key, val in dis_dict.items():
-            #    w.writerow([key, val])
+            for key, val in dis_dict.items():
+                w.writerow([key, sorted(val)])
 
 
 def generate_dic(options):
-    k_values = [3, 5, 50, 100, 500, 1000]
-    n_values = [5, 10, 50, 100]
-    b_values = [1, 3, 5]
-    m_values = [3, 6, 10]
-    M_values = [1, 4, 7]
+    k_values = [5, 10, 50]
+    n_values = [5, 10, 50]
+    b_values = [5, 10, 50]
+    m_values = [5, 10, 50]
+    M_values = [5, 10, 50]
 
     if options.problems == 0:
         problem_runs = [0]
@@ -424,6 +421,7 @@ def generate_dic(options):
         exit(1)
 
     options_dict_values = {}
+    solution_file = open("solution_file_seed_{}.txt".format(options.seed), "w+")
     for k_in in k_values:
         for n_in in n_values:
             for b in b_values:
@@ -437,15 +435,13 @@ def generate_dic(options):
                             alpha, beta, solution = gi(k_in, n_in, options.debug)
                             solution_loc = [i[0] for i in solution]
                             options_dict_values[key_problem1] = [alpha, beta, solution_loc]
+                            solution_file.write(key_problem1 + " | " + str(options_dict_values[key_problem1][-1]))
                             # problem 2 parameters
                             q_mat, alpha2, beta2, gamma = gnci(n_in, m, M, b)
-                            options_dict_values[key_problem2] = [q_mat, alpha2, beta2, gamma]
+                            options_dict_values[key_problem2] = [q_mat, alpha2, beta2, gamma, generate_solution_nonconvex(q_mat, alpha2, beta2, gamma)]
+                            solution_file.write(key_problem2 + " | " + str(options_dict_values[key_problem2][-1] )+"\n")
+    solution_file.close()
 
-    # DEPRECATED
-    # solution_file = open("solution_file_seed_{}.txt".format(options.seed), "w+")
-    # for key in options_dict_values.keys():
-    #     solution_file.write(key + " | " + str(options_dict_values[key][-1]))
-    # solution_file.close()
     return options_dict_values
 
 
@@ -462,13 +458,12 @@ def main():
     print("generating done")
 
     # Add imported algorithm modules to this list to have them be used.
-    for alg in [PSO, GSA, RAN]:
+    for alg in [GSA, PSO, RAN, GA]:
         print("running: {}".format(alg.to_string()))
+        start_time = time.time()
         setup_alg(options, alg)
-        time.sleep(10)
-        print("Next algorithm")
-    print(temp_data)
-
+        end_time = time.time()
+        print(str(alg) + "finished in %s secoonds\n\n" %(end_time - start_time))
 
 if __name__ == '__main__':
     main()

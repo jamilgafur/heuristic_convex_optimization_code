@@ -104,7 +104,7 @@ class Algorithm:
             self.alpha = args['dic'][key_problem2][1]
             self.beta = args['dic'][key_problem2][2]
             self.gamma = args['dic'][key_problem2][3]
-            self.solution = generate_solution_nonconvex(self.Q, self.alpha, self.beta, self.gamma)
+            self.solution = args['dic'][key_problem2][4]
         else:
             raise ValueError('parameter "problem" not provided')
 
@@ -221,8 +221,8 @@ class Algorithm:
         for particle in self.swarm:
             diffs.append(np.sum(np.subtract(self.solution, particle.position)))
 
-        print("got: {}\tcost:{}".format(self.pos_best_g, self.costFunc(self.pos_best_g)))
-        print("sol: {}\tcost:{}".format(self.solution, self.costFunc(self.solution)))
+        # print("got: {}\tcost:{}".format(self.pos_best_g, self.costFunc(self.pos_best_g)))
+        # print("sol: {}\tcost:{}".format(self.solution, self.costFunc(self.solution)))
 
         return self.pos_best_g, self.costFunc(self.pos_best_g), output_dictionary, loss_values, diffs
 

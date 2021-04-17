@@ -170,7 +170,7 @@ class Algorithm:
         if problem == 0:
             if not hasattr(args, 'k'):
                 raise ValueError("k must be given when problem 0 is being used")
-            #self._init_quad_opt(args.k)
+            # self._init_quad_opt(args.k)
             key_problem1 = "0_k{}_n{}_b{}_m{}_M{}".format(args.k, args.size, args.ncb, args.ncm,
                                                           args.ncM)
             self.A = args.dic[key_problem1][0]
@@ -194,7 +194,7 @@ class Algorithm:
             self.gamma = args.dic[key_problem2][3]
             self.evaluate_fitness = self._evalutate_noncon_opt
             self.solution = generate_solution_nonconvex(self.Q, self.alpha, self.beta, self.gamma)
-            #self._init_noncon_opt(args.ncm, args.ncM, args.ncb)
+            # self._init_noncon_opt(args.ncm, args.ncM, args.ncb)
         else:
             raise ValueError('parameter "problem" not provided')
 
@@ -276,7 +276,8 @@ class Algorithm:
         self.evaluate_fitness = self._evalutate_noncon_opt
 
         if self.debug >= 0:
-            print(f"Exact minimum value for problem is: {f_vect(np.array([[0 for _ in range(self.size)]]).T, self.Q, self.alpha, self.beta, self.gamma)}")
+            print(
+                f"Exact minimum value for problem is: {f_vect(np.array([[0 for _ in range(self.size)]]).T, self.Q, self.alpha, self.beta, self.gamma)}")
 
     # =====================================================================================
 
@@ -337,7 +338,7 @@ class Algorithm:
 
             if self.debug >= 2:
                 print("Generation %i has (min, max) fitness values: (%.3f, %.3f)" % (
-                g, max(fitnesses)[0], min(fitnesses)[0]))
+                    g, max(fitnesses)[0], min(fitnesses)[0]))
             # elif self.debug == 1 and g % 10 == 0:
             #  print("Generation %i has (min, max) fitness values: (%.3f, %.3f)" % (g, max(fitnesses)[0], min(fitnesses)[0]))
 
@@ -364,16 +365,12 @@ class Algorithm:
 
             print("\tBest individual seen fitness value:\t\t%.3f" % (hof[0].fitness.values[0]))
 
-        # diffs = []
-        # for particle in self.swarm:
-        #     diffs.append(np.sum(np.subtract(self.solution, particle.position)))
-
-        print("got: {}\tcost:{}".format(hof[0], hof[0].fitness.values[0]))
-        print("sol: {}".format(self.solution))
-
         gen, min_results, max_results, avg, std = logbook.select("gen", "min", "max", "avg", "std")
+        diff = []
+        for p in pop:
+            diff.append(np.sum(np.subtract(self.solution, p)))
         return hof[0], hof[0].fitness.values[0], {"iterations": gen, "min": min_results, "max": max_results, "avg": avg,
-                                                  "std": std}, loss_values, []
+                                                  "std": std}, loss_values, diff
 
     def __getstate__(self):
         self_dict = self.__dict__.copy()

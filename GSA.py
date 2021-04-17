@@ -69,7 +69,7 @@ class Particle:
         self.accel = np.divide(self.force, self.mass)
 
     def calc_velocity(self):
-        self.velocity = np.round(np.random.uniform(0, 1) * np.add(self.velocity, self.accel), 3)
+        self.velocity = np.random.uniform(0, 1) * np.add(self.velocity, self.accel)
 
     # update the particle position based off new velocity updates
     def update_position(self):
@@ -89,7 +89,7 @@ class Particle:
                                                                                   round(sum(self.accel), 7),
                                                                                   round(sum(self.velocity), 7))
             print(tableformat)
-        self.position = np.add(np.round(self.position, 2), self.velocity).tolist()
+        self.position = np.add(self.position, self.velocity).tolist()
 
 
 class Algorithm:
@@ -115,6 +115,7 @@ class Algorithm:
         self.history_loc = []
         self.solution = []
         self.contor_lvl = args["cl"]
+
         # ========problem input=======
         if problem == 0:
             key_problem1 = "0_k{}_n{}_b{}_m{}_M{}".format(args['k'], args['size'], args['ncb'], args['ncm'],
@@ -122,8 +123,7 @@ class Algorithm:
             self.costFunc = self.evaluate_quad_opt
             self.A = args['dic'][key_problem1][0]
             self.b = args['dic'][key_problem1][1]
-            self.solution = generate_solution_convex(self.A, self.b)
-
+            self.solution = args['dic'][key_problem1][2]
         elif problem == 1:
             key_problem2 = "1_k{}_n{}_b{}_m{}_M{}".format(args['k'], args['size'], args['ncb'], args['ncm'],
                                                           args['ncM'])
@@ -132,7 +132,7 @@ class Algorithm:
             self.alpha = args['dic'][key_problem2][1]
             self.beta = args['dic'][key_problem2][2]
             self.gamma = args['dic'][key_problem2][3]
-            self.solution = generate_solution_nonconvex(self.Q, self.alpha, self.beta, self.gamma)
+            self.solution = args['dic'][key_problem2][4]
         else:
             raise ValueError('parameter "problem" not provided')
 
@@ -270,8 +270,8 @@ class Algorithm:
         for particle in self.swarm:
             diffs.append(np.sum(np.subtract(self.solution, particle.position)))
 
-        print("got: {}\tcost:{}".format(self.best_cost_location, self.costFunc(self.best_cost_location)))
-        print("sol: {}\tcost:{}".format(self.solution, self.costFunc(self.solution)))
+        # print("got: {}\tcost:{}".format(self.best_cost_location, self.costFunc(self.best_cost_location)))
+        # print("sol: {}\tcost:{}".format(self.solution, self.costFunc(self.solution)))
 
         return self.best_cost_location, self.costFunc(self.best_cost_location), output_dictionary, loss_values, diffs
 
