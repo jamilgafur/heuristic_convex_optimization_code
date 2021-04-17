@@ -366,11 +366,12 @@ class Algorithm:
             print("\tBest individual seen fitness value:\t\t%.3f" % (hof[0].fitness.values[0]))
 
         gen, min_results, max_results, avg, std = logbook.select("gen", "min", "max", "avg", "std")
-        diff = []
+        diffs = []
         for p in pop:
-            diff.append(np.sum(np.subtract(self.solution, p)))
+            diffs.append(np.sqrt(np.square(np.subtract(self.solution, p))).mean())
+
         return hof[0], hof[0].fitness.values[0], {"iterations": gen, "min": min_results, "max": max_results, "avg": avg,
-                                                  "std": std}, loss_values, diff
+                                                  "std": std}, loss_values, diffs
 
     def __getstate__(self):
         self_dict = self.__dict__.copy()
